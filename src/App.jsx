@@ -67,7 +67,6 @@ export default function ChatApp() {
   const join = () => {
     socket.emit("joinRoom", { room, user: { name } });
     setJoined(true);
-    setMessages(s => [...s, { user: { name: "系統" }, message: `${name} 加入房間` }]);
     if (autoLeaveTime > 0) autoLeaveRef.current = setTimeout(() => leave(), autoLeaveTime * 1000);
   };
 
