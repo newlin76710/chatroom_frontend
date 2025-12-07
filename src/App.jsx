@@ -110,7 +110,7 @@ export default function App() {
         marginBottom: "10px", justifyContent: "space-between"
       }}>
 
-        <div style={{ flex: "1 1 150px" }}>
+        <div style={{ flex: "1 1 120px" }}>
           <label>暱稱：</label>
           <input value={name} onChange={(e) => setName(e.target.value)} style={{ width: "100%", padding: "5px" }} />
         </div>
@@ -129,7 +129,7 @@ export default function App() {
           </button>
         </div>
 
-        <div style={{ flex: "1 1 150px" }}>
+        <div style={{ flex: "1 1 120px" }}>
           <label>指定聊天對象：</label>
           <select value={targetAI} onChange={(e) => setTargetAI(e.target.value)}
             style={{ width: "100%", padding: "5px" }}>
