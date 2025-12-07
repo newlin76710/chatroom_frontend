@@ -79,10 +79,30 @@ export default function ChatApp() {
 
   const send = () => {
     if (!text || !joined) return;
-    if (target && aiAvatars[target]) setTyping(`${target} 正在輸入...`);
+
+    // 如果選擇了 AI 作為目標，延遲 2 秒顯示「正在輸入」
+    let typingTimeout;
+    if (target && aiAvatars[target]) {
+      typingTimeout = setTimeout(() => {
+        setTyping(`${target} 正在輸入...`);
+      }, 2000);
+    }
+
     socket.emit("message", { room, message: text, user: { name }, target });
     setText("");
+
+    // 監聽 AI 回覆事件，收到後清除 typing
+    const clearTyping = (m) => {
+      if (m.user?.name === target) {
+        setTyping("");
+        socket.off("message", clearTyping); // 清掉監聽
+        if (typingTimeout) clearTimeout(typingTimeout); // 如果還沒顯示也取消
+      }
+    };
+
+    socket.on("message", clearTyping);
   };
+
 
   return (
     <div className="container mt-3">
