@@ -26,15 +26,24 @@ export default function App() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const join = () => {
-    socket.emit("joinRoom", { room, user: { name } });
-    setJoined(true);
-    // 如果想立即在自己聊天室顯示，也可以在前端加一條
-    setMessages(s => [...s, { user: { name: '系統' }, message: `${name} 加入房間` }]);
+  // 加入或離開房間
+  const toggleRoom = () => {
+    if (!joined) {
+      socket.emit("joinRoom", { room, user: { name } });
+      setJoined(true);
+      // 前端立即顯示自己加入的訊息
+      setMessages((s) => [...s, { user: { name: '系統' }, message: `${name} 加入房間` }]);
+    } else {
+      socket.emit("leaveRoom");
+      setJoined(false);
+      // 前端立即顯示自己離開的訊息
+      setMessages((s) => [...s, { user: { name: '系統' }, message: `${name} 離開房間` }]);
+    }
   };
 
+  // 發送訊息
   const send = () => {
-    if (!text) return;
+    if (!text || !joined) return;
     socket.emit("message", { room, message: text, user: { name } });
     setText("");
   };
@@ -57,7 +66,9 @@ export default function App() {
           </select>
         </div>
 
-        <button onClick={join} style={{ padding: "5px 15px", cursor: "pointer" }}>加入</button>
+        <button onClick={toggleRoom} style={{ padding: "5px 15px", cursor: "pointer" }}>
+          {joined ? "離開" : "加入"}
+        </button>
       </div>
 
       {/* 聊天訊息區 */}
