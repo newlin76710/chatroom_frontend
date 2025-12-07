@@ -128,31 +128,6 @@ export default function App() {
           </select>
         </div>
 
-        {/* 加入 / 離開按鈕 */}
-        <div className="col-6 col-md-2 d-flex align-items-end">
-          <button
-            className={`btn ${joined ? "btn-danger" : "btn-primary"} w-100`}
-            onClick={joined ? leave : join}
-          >
-            {joined ? "離開" : "加入"}
-          </button>
-        </div>
-
-        {/* 指定聊天對象 */}
-        <div className="col-6 col-md-3">
-          <label className="form-label">指定聊天對象</label>
-          <select
-            className="form-select"
-            value={targetAI}
-            onChange={(e) => setTargetAI(e.target.value)}
-          >
-            <option value="">全部</option>
-            {aiPersonalities.map((p) => (
-              <option key={p}>{p}</option>
-            ))}
-          </select>
-        </div>
-
         {/* 自動離開秒數 */}
         <div className="col-6 col-md-2">
           <label className="form-label">自動離開秒數</label>
@@ -163,6 +138,16 @@ export default function App() {
             value={autoLeaveTime}
             onChange={(e) => setAutoLeaveTime(Number(e.target.value))}
           />
+        </div>
+
+        {/* 加入 / 離開按鈕 */}
+        <div className="col-6 col-md-2 d-flex align-items-end">
+          <button
+            className={`btn ${joined ? "btn-danger" : "btn-primary"} w-100`}
+            onClick={joined ? leave : join}
+          >
+            {joined ? "離開" : "加入"}
+          </button>
         </div>
       </div>
 
@@ -234,8 +219,20 @@ export default function App() {
         </div>
       </div>
 
-      {/* 輸入框 */}
+      {/* 輸入框 + 指定聊天對象 */}
       <div className="input-group mb-3">
+        <select
+          className="form-select"
+          value={targetAI}
+          onChange={(e) => setTargetAI(e.target.value)}
+          style={{ maxWidth: "150px" }}
+        >
+          <option value="">全部</option>
+          {aiPersonalities.map((p) => (
+            <option key={p}>{p}</option>
+          ))}
+        </select>
+
         <input
           className="form-control"
           value={text}
@@ -244,6 +241,7 @@ export default function App() {
           placeholder={joined ? "輸入訊息後按 Enter 發送" : "請先加入房間才能發言"}
           disabled={!joined}
         />
+
         <button
           className="btn btn-success"
           onClick={send}
