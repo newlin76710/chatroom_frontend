@@ -3,7 +3,6 @@ import { io } from "socket.io-client";
 
 const socket = io(import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001');
 
-// 模擬 AI 人格列表（可在後端生成更多）
 const aiPersonalities = [
   "林怡君", "張雅婷", "陳思妤", "黃彥廷",
   "王子涵", "劉家瑋", "李佩珊", "蔡承翰",
@@ -17,9 +16,11 @@ export default function App() {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [joined, setJoined] = useState(false);
-  const [targetAI, setTargetAI] = useState(""); // 指定對話的 AI
+  const [targetAI, setTargetAI] = useState("");
+  const [autoLeaveTime, setAutoLeaveTime] = useState(0); // 秒，0 表示不自動離開
 
   const messagesEndRef = useRef(null);
+  const autoLeaveTimeoutRef = useRef(null);
 
   useEffect(() => {
     socket.on("message", (m) => setMessages((s) => [...s, m]));
@@ -38,6 +39,25 @@ export default function App() {
     socket.emit("joinRoom", { room, user: { name } });
     setJoined(true);
     setMessages((s) => [...s, { user: { name: '系統' }, message: `${name} 加入房間` }]);
+
+    // 如果設定自動離開
+    if (autoLeaveTime > 0) {
+      autoLeaveTimeoutRef.current = setTimeout(() => {
+        leave();
+      }, autoLeaveTime * 1000);
+    }
+  };
+
+  const leave = () => {
+    socket.emit("leaveRoom", { room, user: { name } });
+    setJoined(false);
+    setMessages((s) => [...s, { user: { name: '系統' }, message: `${name} 離開房間` }]);
+    
+    // 清掉自動離開計時
+    if (autoLeaveTimeoutRef.current) {
+      clearTimeout(autoLeaveTimeoutRef.current);
+      autoLeaveTimeoutRef.current = null;
+    }
   };
 
   const send = () => {
@@ -46,7 +66,7 @@ export default function App() {
       room,
       message: text,
       user: { name },
-      targetAI // 可空，表示廣播給所有人
+      targetAI
     });
     setText("");
   };
@@ -55,7 +75,6 @@ export default function App() {
     <div style={{ maxWidth: "800px", margin: "30px auto", fontFamily: "Arial, sans-serif" }}>
       <h2 style={{ textAlign: "center", marginBottom: "20px" }}>尋夢園聊天室</h2>
 
-      {/* 使用者資訊區 */}
       <div style={{ display: "flex", gap: "10px", marginBottom: "15px", alignItems: "center", flexWrap: "wrap" }}>
         <div>
           <label>暱稱：</label>
@@ -69,7 +88,12 @@ export default function App() {
           </select>
         </div>
 
-        <button onClick={join} style={{ padding: "5px 15px", cursor: "pointer" }} disabled={joined}>加入</button>
+        <button
+          onClick={joined ? leave : join}
+          style={{ padding: "5px 15px", cursor: "pointer" }}
+        >
+          {joined ? "離開" : "加入"}
+        </button>
 
         <div>
           <label>指定 聊天對象：</label>
@@ -78,9 +102,19 @@ export default function App() {
             {aiPersonalities.map((p) => <option key={p} value={p}>{p}</option>)}
           </select>
         </div>
+
+        <div>
+          <label>自動離開秒數：</label>
+          <input
+            type="number"
+            min="0"
+            value={autoLeaveTime}
+            onChange={(e) => setAutoLeaveTime(Number(e.target.value))}
+            style={{ width: "80px", padding: "5px" }}
+          />
+        </div>
       </div>
 
-      {/* 聊天訊息區 */}
       <div style={{
         border: "1px solid #ddd",
         height: "400px",
@@ -103,7 +137,6 @@ export default function App() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* 發送訊息區 */}
       <div style={{ display: "flex", gap: "10px" }}>
         <input
           value={text}
