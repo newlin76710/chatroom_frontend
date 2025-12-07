@@ -106,45 +106,70 @@ export default function App() {
 
       {/* 控制面板 */}
       <div style={{
-        display: "flex", flexWrap: "wrap", gap: "10px",
-        marginBottom: "10px", justifyContent: "space-between"
+        display: "flex",
+        flexWrap: "wrap",
+        gap: "12px",
+        padding: "10px",
+        alignItems: "flex-end"
       }}>
 
-        <div style={{ flex: "1 1 120px" }}>
-          <label>暱稱：</label>
-          <input value={name} onChange={(e) => setName(e.target.value)} style={{ width: "100%", padding: "5px" }} />
+        <div style={{ flex: "1 1 180px" }}>
+          <label style={{ display: "block", marginBottom: "4px" }}>暱稱：</label>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            style={{ width: "100%", padding: "6px" }}
+          />
         </div>
 
-        <div style={{ flex: "1 1 100px" }}>
-          <label>房間：</label>
-          <select value={room} onChange={(e) => setRoom(e.target.value)}
-            style={{ width: "100%", padding: "5px" }}>
+        <div style={{ flex: "1 1 120px" }}>
+          <label style={{ display: "block", marginBottom: "4px" }}>房間：</label>
+          <select
+            value={room}
+            onChange={(e) => setRoom(e.target.value)}
+            style={{ width: "100%", padding: "6px" }}
+          >
             <option value="public">大廳</option>
           </select>
         </div>
 
-        <div style={{ flex: "1 1 100px", display: "flex", alignItems: "flex-end" }}>
-          <button onClick={joined ? leave : join} style={{ width: "100%", padding: "6px" }}>
+        <div style={{ flex: "1 1 120px" }}>
+          <label style={{ display: "block", marginBottom: "4px" }}>加入/離開：</label>
+          <button
+            onClick={joined ? leave : join}
+            style={{ width: "100%", padding: "7px" }}
+          >
             {joined ? "離開" : "加入"}
           </button>
         </div>
 
-        <div style={{ flex: "1 1 120px" }}>
-          <label>指定聊天對象：</label>
-          <select value={targetAI} onChange={(e) => setTargetAI(e.target.value)}
-            style={{ width: "100%", padding: "5px" }}>
+        <div style={{ flex: "1 1 180px" }}>
+          <label style={{ display: "block", marginBottom: "4px" }}>指定聊天對象：</label>
+          <select
+            value={targetAI}
+            onChange={(e) => setTargetAI(e.target.value)}
+            style={{ width: "100%", padding: "6px" }}
+          >
             <option value="">全部</option>
-            {aiPersonalities.map((p) => <option key={p}>{p}</option>)}
+            {aiPersonalities.map((p) => (
+              <option key={p}>{p}</option>
+            ))}
           </select>
         </div>
 
-        <div style={{ flex: "1 1 100px" }}>
-          <label>自動離開秒數：</label>
-          <input type="number" min="0" value={autoLeaveTime}
+        <div style={{ flex: "1 1 150px" }}>
+          <label style={{ display: "block", marginBottom: "4px" }}>自動離開秒數：</label>
+          <input
+            type="number"
+            min="0"
+            value={autoLeaveTime}
             onChange={(e) => setAutoLeaveTime(Number(e.target.value))}
-            style={{ width: "100%", padding: "5px" }} />
+            style={{ width: "100%", padding: "6px" }}
+          />
         </div>
+
       </div>
+
 
       {/* 聊天 */}
       <div style={{
