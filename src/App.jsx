@@ -114,7 +114,7 @@ export default function App() {
         </div>
       </div>
 
-      <div style={{
+     <div style={{
         border: "1px solid #ddd",
         height: "400px",
         overflowY: "auto",
@@ -123,17 +123,25 @@ export default function App() {
         background: "#fafafa",
         marginBottom: "15px"
       }}>
-        {messages.map((m, i) => (
-          <div key={i} style={{ marginBottom: "8px" }}>
-            <strong style={{ color: m.user?.name === "系統" ? "#f00" : "#333" }}>
-              {m.user?.name} {m.to ? `對 ${m.to} 說` : ""}：
-            </strong>
-            <span>{m.message}</span>
-          </div>
-        ))}
+        {messages.map((m, i) => {
+          // 判斷顏色：系統紅色、AI 或自己紫色、其他訪客紫色
+          let nameColor = "purple"; // 預設黑色
+          if (m.user?.name === "系統") nameColor = "#f00";
+          else if (aiPersonalities.includes(m.user?.name) || m.user?.name === name) nameColor = "purple";
+
+          return (
+            <div key={i} style={{ marginBottom: "8px" }}>
+              <strong style={{ color: nameColor }}>
+                {m.user?.name} {m.to ? `對 ${m.to} 說` : ""}：
+              </strong>
+              <span>{m.message}</span>
+            </div>
+          );
+        })}
         {!messages.length && <div style={{ color: '#888', textAlign: "center" }}>還沒有人發話，打個招呼吧！</div>}
         <div ref={messagesEndRef} />
       </div>
+
 
       <div style={{ display: "flex", gap: "10px" }}>
         <input
