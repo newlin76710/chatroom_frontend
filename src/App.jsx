@@ -24,7 +24,7 @@ export default function App() {
 
   useEffect(() => {
     socket.on("message", (m) => setMessages((s) => [...s, m]));
-    socket.on("systemMessage", (m) => setMessages((s) => [...s, { user: { name: '系統' }, message: m }] ));
+    socket.on("systemMessage", (m) => setMessages((s) => [...s, { user: { name: '系統' }, message: m }]));
     return () => {
       socket.off("message");
       socket.off("systemMessage");
@@ -49,7 +49,7 @@ export default function App() {
     socket.emit("leaveRoom", { room, user: { name } });
     setJoined(false);
     setMessages((s) => [...s, { user: { name: '系統' }, message: `${name} 離開房間` }]);
-    
+
     if (autoLeaveTimeoutRef.current) {
       clearTimeout(autoLeaveTimeoutRef.current);
       autoLeaveTimeoutRef.current = null;
@@ -114,7 +114,7 @@ export default function App() {
         </div>
       </div>
 
-     <div style={{
+      <div style={{
         border: "1px solid #ddd",
         height: "400px",
         overflowY: "auto",
@@ -124,10 +124,11 @@ export default function App() {
         marginBottom: "15px"
       }}>
         {messages.map((m, i) => {
-          // 判斷顏色：系統紅色、AI 或自己紫色、其他訪客紫色
-          let nameColor = "purple"; // 預設黑色
+          // 判斷顏色：系統紅色、AI 紫色、真人藍色、其他黑色
+          let nameColor = "#333"; // 預設黑色
           if (m.user?.name === "系統") nameColor = "#f00";
-          else if (aiPersonalities.includes(m.user?.name) || m.user?.name === name) nameColor = "purple";
+          else if (aiPersonalities.includes(m.user?.name)) nameColor = "purple";
+          else nameColor = "blue"; // 真人（自己或其他訪客）用藍色
 
           return (
             <div key={i} style={{ marginBottom: "8px" }}>
@@ -141,7 +142,6 @@ export default function App() {
         {!messages.length && <div style={{ color: '#888', textAlign: "center" }}>還沒有人發話，打個招呼吧！</div>}
         <div ref={messagesEndRef} />
       </div>
-
 
       <div style={{ display: "flex", gap: "10px" }}>
         <input
