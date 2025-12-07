@@ -177,24 +177,8 @@ export default function App() {
                 )}
 
                 <div
-                  className="p-2 rounded shadow-sm"
-                  style={{
-                    maxWidth: "70%",
-                    backgroundColor: isSystem
-                      ? "#ffe5e5"
-                      : isAI
-                        ? "#f1e0ff"
-                        : isSelf
-                          ? "#d7eafe"
-                          : "#ffffff",
-                    color: isSystem
-                      ? "#bb0000"
-                      : isAI
-                        ? "purple"
-                        : isSelf
-                          ? "#003366"
-                          : "#333"
-                  }}
+                  className={`p-2 rounded shadow-sm ${isSystem ? "bg-danger bg-opacity-10 text-danger" : isAI ? "bg-purple bg-opacity-10 text-purple" : isSelf ? "bg-primary bg-opacity-10 text-primary" : "bg-light text-dark"}`}
+                  style={{ maxWidth: "70%" }}
                 >
                   <strong>
                     {m.user?.name} {m.to ? `對 ${m.to} 說` : ""}：
@@ -219,8 +203,9 @@ export default function App() {
         </div>
       </div>
 
-      {/* 輸入框 + 指定聊天對象 */}
+      {/* 輸入區：發送對象 + 訊息 + 發送按鈕 */}
       <div className="input-group mb-3">
+        <span className="input-group-text">發送給</span>
         <select
           className="form-select"
           value={targetAI}
