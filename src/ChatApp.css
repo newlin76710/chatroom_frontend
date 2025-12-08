@@ -147,22 +147,21 @@ body, .chat-container {
   border-top: 1px solid #555;
 }
 
-.chat-input select {
-  flex: 0 0 150px;
-  padding: 6px;
+.chat-input select,
+.chat-input input {
   border-radius: 6px;
   border: 1px solid #555;
   background-color: #1a1a1a;
   color: #fff;
+  padding: 6px 10px;
+}
+
+.chat-input select {
+  flex: 0 0 150px;
 }
 
 .chat-input input {
   flex: 1;
-  padding: 6px 10px;
-  border-radius: 6px;
-  border: 1px solid #555;
-  background-color: #1a1a1a;
-  color: #fff;
 }
 
 .chat-input button {
