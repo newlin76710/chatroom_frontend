@@ -82,7 +82,7 @@ export default function ChatApp() {
           <button onClick={joined ? leave : join}>{joined ? "離開" : "加入"}</button>
         </div>
       </div>
-
+ 
       <div className="chat-main">
         {/* 聊天區 */}
         <div className="chat-box">
