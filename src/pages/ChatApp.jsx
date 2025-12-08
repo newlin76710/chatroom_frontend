@@ -1,181 +1,163 @@
+// ChatApp.jsx
 import { useState, useEffect, useRef } from "react";
 import { io } from "socket.io-client";
+import { aiAvatars, aiProfiles } from "./aiConfig";
+import './ChatApp.css';
 
-const BACKEND = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+const socket = io(import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000');
 
 export default function ChatApp() {
-  const [joined, setJoined] = useState(false);
   const [room, setRoom] = useState("public");
-  const [name, setName] = useState(localStorage.getItem("name") || "");
-  const [text, setText] = useState("");
+  const [name, setName] = useState("");
+  const [guestToken, setGuestToken] = useState("");
   const [messages, setMessages] = useState([]);
-  const [users, setUsers] = useState([]);
+  const [text, setText] = useState("");
+  const [joined, setJoined] = useState(false);
   const [target, setTarget] = useState("");
   const [typing, setTyping] = useState("");
+  const [userList, setUserList] = useState([]);
+  const [showUserList, setShowUserList] = useState(true);
 
-  const socketRef = useRef(null);
+  const messagesEndRef = useRef(null);
 
-  // === 初始化 socket，帶上 Token ===
+  // 自動滾動到底部
   useEffect(() => {
-    const token = localStorage.getItem("guestToken");
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
-    const socket = io(BACKEND, {
-      auth: { token }
+  // Socket 事件
+  useEffect(() => {
+    socket.on("message", (m) => {
+      setMessages(s => [...s, m]);
+      if (m.user && aiAvatars[m.user.name] && m.target) setTyping("");
     });
+    socket.on("systemMessage", (m) => setMessages(s => [...s, { user: { name: "系統" }, message: m }]));
+    socket.on("updateUsers", (list) => setUserList(list));
 
-    socketRef.current = socket;
-
-    // 連線成功
-    socket.on("connect", () => {
-      console.log("connected");
-    });
-
-    // 系統訊息
-    socket.on("systemMessage", msg => {
-      setMessages(prev => [...prev, { user: { name: "系統" }, message: msg }]);
-    });
-
-    // 訊息
-    socket.on("message", msg => {
-      setMessages(prev => [...prev, msg]);
-      setTyping("");
-    });
-
-    // 在線 users
-    socket.on("updateUsers", list => setUsers(list));
-
-    return () => socket.disconnect();
+    return () => {
+      socket.off("message");
+      socket.off("systemMessage");
+      socket.off("updateUsers");
+    };
   }, []);
 
-  // === 加入房間 ===
-  const joinRoom = () => {
-    if (!name) return alert("登入錯誤，請重新登入");
-    const socket = socketRef.current;
+  // 訪客登入
+  const loginGuest = async () => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}/auth/guest`, {
+        method: "POST"
+      });
+      const data = await res.json();
+      if (!data.guestToken) throw new Error("訪客登入失敗");
+      setGuestToken(data.guestToken);
+      setName(data.name);
+      joinRoom(data.name);
+    } catch (err) {
+      alert("訪客登入失敗");
+      console.error(err);
+    }
+  };
 
-    socket.emit("joinRoom", {
-      room,
-      user: { name, token: localStorage.getItem("guestToken") }
-    });
+  // 加入聊天室
+  const joinRoom = (username) => {
+    socket.emit("joinRoom", { room, user: { name: username } });
     setJoined(true);
   };
 
-  // === 離開房間 ===
+  // 離開聊天室
   const leaveRoom = () => {
-    socketRef.current.emit("leaveRoom");
+    socket.emit("leaveRoom", { room, user: { name } });
     setJoined(false);
-    setMessages([]);
+    setMessages(s => [...s, { user: { name: "系統" }, message: `${name} 離開房間` }]);
   };
 
-  // === 送出訊息 ===
+  // 發送訊息
   const send = () => {
     if (!text || !joined) return;
-
-    const socket = socketRef.current;
-
-    // 2 秒後才顯示 AI typing
-    if (target) {
-      setTimeout(() => setTyping(`${target} 正在輸入...`), 2000);
-    }
-
-    socket.emit("message", {
-      room,
-      message: text,
-      user: { name },
-      target
-    });
-
+    socket.emit("message", { room, message: text, user: { name }, target });
     setText("");
   };
 
   return (
-    <div style={{ display: "flex", height: "100vh" }}>
-      {/* ---- 左側：在線名單 ---- */}
-      <div
-        style={{
-          width: 180,
-          borderRight: "1px solid #ccc",
-          overflowY: "auto",
-          padding: 10
-        }}
-      >
-        <h3>在線名單</h3>
+    <div className="chat-container">
+      <h2>尋夢園聊天室</h2>
 
-        {users.map((u, i) => (
-          <div
-            key={i}
-            onClick={() => setTarget(u.name)}
-            style={{
-              padding: "6px 0",
-              cursor: "pointer",
-              color:
-                u.name === target
-                  ? "blue"
-                  : u.type === "AI"
-                  ? "#d63384"
-                  : "#333"
-            }}
-          >
-            {u.name} {u.type === "AI" && "🤖"}
-          </div>
-        ))}
-      </div>
+      {/* 訪客登入 / 登出 */}
+      {!joined ? (
+        <div style={{ marginBottom: "1rem" }}>
+          <button onClick={loginGuest}>訪客登入</button>
+        </div>
+      ) : (
+        <div style={{ marginBottom: "1rem" }}>
+          <strong>Hi, {name}</strong> <button onClick={leaveRoom}>離開聊天室</button>
+        </div>
+      )}
 
-      {/* ---- 中間：聊天室 ---- */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: 10 }}>
-        {!joined ? (
-          <div>
-            <h2>聊天室登入</h2>
-            <p>目前登入身分：{name}</p>
-            <button onClick={joinRoom} style={{ padding: 10, fontSize: 18 }}>
-              進入聊天室
-            </button>
-          </div>
-        ) : (
-          <>
-            <div
-              style={{
-                flex: 1,
-                border: "1px solid #ccc",
-                padding: 10,
-                overflowY: "auto",
-                marginBottom: 10
-              }}
-            >
-              {messages.map((msg, i) => (
-                <div key={i} style={{ marginBottom: 8 }}>
-                  <strong>{msg.user?.name}：</strong> {msg.message}
-                  {msg.target && (
-                    <span style={{ color: "#888" }}> → {msg.target}</span>
-                  )}
+      <div className="chat-main">
+        {/* 聊天區 */}
+        <div className="chat-box">
+          <div className="chat-messages">
+            {messages.map((m, i) => {
+              const isSelf = m.user?.name === name;
+              const isAI = aiAvatars[m.user?.name];
+              const profile = aiProfiles[m.user?.name] || { color: isAI ? "#fff" : "#000" };
+              return (
+                <div key={i} className="message-row" style={{ justifyContent: isSelf ? "flex-end" : "flex-start" }}>
+                  {!isSelf && isAI && <img src={aiAvatars[m.user?.name]} alt={m.user.name} className="message-avatar" />}
+                  <div
+                    className={`chat-message${isSelf ? " self" : isAI ? " ai" : ""}${m.user?.name === "系統" ? " system" : ""}`}
+                    style={{ color: m.user?.name === "系統" ? "#ff5555" : profile.color }}
+                  >
+                    <strong>{m.user?.name}{m.target ? ` 對 ${m.target} 說` : ""}：</strong> {m.message}
+                  </div>
                 </div>
-              ))}
+              );
+            })}
+            {typing && <div className="typing">{typing}</div>}
+            <div ref={messagesEndRef} />
+          </div>
 
-              {typing && (
-                <div style={{ color: "#888", marginTop: 10 }}>{typing}</div>
-              )}
-            </div>
+          {/* 輸入區 */}
+          <div className="chat-input">
+            <select value={target} onChange={e => setTarget(e.target.value)}>
+              <option value="">發送給全部</option>
+              {userList.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
+            </select>
+            <input
+              type="text"
+              value={text}
+              onChange={e => setText(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && send()}
+              disabled={!joined}
+              placeholder={joined ? "輸入訊息後按 Enter 發送" : "請先登入"}
+            />
+            <button onClick={send} disabled={!joined}>發送</button>
+          </div>
+        </div>
 
-            {/* ---- 發送區 ---- */}
-            <div style={{ display: "flex" }}>
-              <input
-                value={text}
-                onChange={e => setText(e.target.value)}
-                style={{ flex: 1, padding: 10 }}
-                placeholder={target ? `悄悄話給：${target}` : "輸入訊息..."}
-              />
-              <button onClick={send} style={{ padding: "10px 20px" }}>
-                送出
-              </button>
-            </div>
-
-            <button
-              onClick={leaveRoom}
-              style={{ marginTop: 10, color: "red" }}
-            >
-              離開聊天室
+        {/* 使用者列表 */}
+        <div className="user-list">
+          <div className="user-list-header">
+            <strong>在線人數: {userList.length}</strong>
+            <button onClick={() => setShowUserList(!showUserList)}>
+              {showUserList ? "▼" : "▲"}
             </button>
-          </>
-        )}
+          </div>
+          {showUserList && (
+            <div className="user-list-content">
+              {userList.map(u => {
+                const isSelected = u.name === target;
+                const avatar = aiAvatars[u.name];
+                return (
+                  <div key={u.id} className={`user-item${isSelected ? " selected" : ""}`} onClick={() => setTarget(u.name)}>
+                    {avatar && <img src={avatar} alt={u.name} className="user-avatar" />}
+                    {u.name}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
