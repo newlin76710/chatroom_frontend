@@ -3,7 +3,6 @@ import { io } from "socket.io-client";
 
 const socket = io(import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000');
 
-// AI 頭像
 const aiAvatars = {
   "林怡君": "/avatars/g01.gif",
   "張雅婷": "/avatars/g02.gif",
@@ -23,14 +22,35 @@ const aiAvatars = {
   "施俊傑": "/avatars/b08.gif",
 };
 
-// AI 個性設定
 const aiProfiles = {
-  "林怡君": { color: "purple", style: "活潑", phrases: ["哈哈～", "真的嗎？", "好有趣！"] },
-  "張雅婷": { color: "pink", style: "甜美", phrases: ["嗯嗯～", "太棒了！", "我也覺得呢～"] },
-  "陳思妤": { color: "orange", style: "俏皮", phrases: ["XD", "好耶！", "真的假的～"] },
-  "黃彥廷": { color: "green", style: "幽默", phrases: ["哈哈哈", "這不錯！", "你說什麼？"] },
-  "王子涵": { color: "blue", style: "沉穩", phrases: ["嗯～", "原來如此", "了解～"] },
-  // 其他 AI 可自行增加
+  "林怡君": {
+    color: "purple",
+    phrases: ["哈哈～", "真的嗎？", "好有趣！"],
+    templates: [
+      "我覺得 {lastUser} 說的很有趣！",
+      "你們知道嗎？我最近發現了……",
+      "對啊～我也這麼想！"
+    ]
+  },
+  "黃彥廷": {
+    color: "green",
+    phrases: ["XD", "這不錯！", "你說什麼？"],
+    templates: [
+      "{lastUser} 的意思是……？哈哈",
+      "我也想說同樣的事！",
+      "真的嗎？我沒想到這點！"
+    ]
+  },
+  "曾雅雯": {
+    color: "pink",
+    phrases: ["嗯嗯～", "好耶！", "哈哈～"],
+    templates: [
+      "我剛剛在想 {lastUser} 說的事",
+      "你們覺得呢？",
+      "這個話題好有趣啊！"
+    ]
+  },
+  // 可以增加其他 AI
 };
 
 export default function ChatApp() {
@@ -49,13 +69,12 @@ export default function ChatApp() {
   const autoLeaveRef = useRef(null);
   const aiLoopRef = useRef(null);
 
-  // --- Socket 事件監聽 ---
+  // --- Socket 事件 ---
   useEffect(() => {
     socket.on("message", (m) => {
       setMessages(s => [...s, m]);
       if (m.user && aiAvatars[m.user.name] && m.target) setTyping("");
     });
-
     socket.on("systemMessage", (m) => setMessages(s => [...s, { user: { name: "系統" }, message: m }]));
     socket.on("typing", (n) => {
       setTyping(n + " 正在輸入...");
@@ -76,14 +95,12 @@ export default function ChatApp() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, typing]);
 
-  // --- 加入房間 ---
   const join = () => {
     socket.emit("joinRoom", { room, user: { name } });
     setJoined(true);
     if (autoLeaveTime > 0) autoLeaveRef.current = setTimeout(() => leave(), autoLeaveTime * 1000);
   };
 
-  // --- 離開房間 ---
   const leave = () => {
     socket.emit("leaveRoom", { room, user: { name } });
     setJoined(false);
@@ -93,7 +110,6 @@ export default function ChatApp() {
     aiLoopRef.current = null;
   };
 
-  // --- 發送訊息 ---
   const send = () => {
     if (!text || !joined) return;
 
@@ -116,72 +132,48 @@ export default function ChatApp() {
     socket.on("message", clearTyping);
   };
 
-  // --- AI 自動對話循環 + 個性化 ---
+  // --- AI 自動對話 ---
   useEffect(() => {
     if (!joined) return;
 
-    const ais = userList.filter(u => aiAvatars[u.name]);
-    if (!ais.length) return;
-    if (aiLoopRef.current) return;
+    const activeAILoop = {};
 
     const loop = async () => {
       const ais = userList.filter(u => aiAvatars[u.name]);
-      if (!ais.length) {
-        aiLoopRef.current = null;
-        return;
-      }
+      const humanUsers = userList.filter(u => !aiAvatars[u.name]);
+      if (!ais.length) return;
 
-      const speaker = ais[Math.floor(Math.random() * ais.length)];
-      const lastUser = messages.slice(-1)[0]?.user?.name || "大家";
+      for (let speaker of ais) {
+        if (activeAILoop[speaker.name]) continue; // AI 正在回覆則跳過
 
-      setTyping(`${speaker.name} 正在輸入...`);
+        activeAILoop[speaker.name] = true;
 
-      try {
-        const typeRand = Math.random();
-        let userMessage = "";
-        if (typeRand < 0.6) {
-          userMessage = `接續 ${lastUser} 的話題聊聊`;
-        } else {
-          const topics = [
-            "大家最近有什麼有趣的事嗎？",
-            "你們最喜歡的電影是什麼？",
-            "今天心情如何？",
-            "有沒有推薦的音樂或歌手？",
-            "最近看到什麼好笑的事情嗎？"
-          ];
-          userMessage = topics[Math.floor(Math.random() * topics.length)];
-        }
+        const typingDelay = 1000 + Math.random() * 2000;
+        setTimeout(() => setTyping(`${speaker.name} 正在輸入...`), typingDelay);
 
-        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}/ai/reply`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            room,
-            userMessage,
-            aiName: speaker.name,
-            roomContext: messages.map(m => ({ user: m.user?.name, text: m.message }))
-          })
-        });
+        const lastMessage = messages.slice(-1)[0];
+        const lastUser = lastMessage?.user?.name || "大家";
+        const targetUser = humanUsers.length && Math.random() < 0.7
+          ? humanUsers[Math.floor(Math.random() * humanUsers.length)].name
+          : "";
 
-        const data = await response.json();
-        const profile = aiProfiles[speaker.name] || { phrases: ["嗯嗯～"], color: "purple" };
+        const profile = aiProfiles[speaker.name] || { templates: ["嗯嗯～"], phrases: ["嗯嗯～"], color: "purple" };
+        const template = profile.templates[Math.floor(Math.random() * profile.templates.length)];
         const suffix = profile.phrases[Math.floor(Math.random() * profile.phrases.length)];
-        const aiReply = data.reply ? `${data.reply} ${suffix}` : suffix;
+        const aiReply = template.replace("{lastUser}", lastUser) + " " + suffix;
 
         socket.emit("message", {
           room,
           message: aiReply,
           user: { name: speaker.name },
-          target: typeRand < 0.6 ? lastUser : ""
+          target: targetUser
         });
-      } catch (err) {
-        console.error("[AI 前端 fetch error]", err);
-      } finally {
-        setTyping("");
+
+        setTimeout(() => setTyping(""), 2000);
+        setTimeout(() => activeAILoop[speaker.name] = false, 15000 + Math.random() * 10000);
       }
 
-      const delay = 18000 + Math.random() * 17000;
-      aiLoopRef.current = setTimeout(loop, delay);
+      aiLoopRef.current = setTimeout(loop, 15000 + Math.random() * 10000);
     };
 
     loop();
@@ -192,7 +184,7 @@ export default function ChatApp() {
     };
   }, [userList, joined, messages]);
 
-  // --- JSX 渲染部分 ---
+  // --- JSX 渲染 ---
   return (
     <div className="container mt-3">
       <h2 className="text-center mb-3">尋夢園聊天室</h2>
