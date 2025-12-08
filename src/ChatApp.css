@@ -232,7 +232,7 @@ body, .chat-container {
 }
 
 .chat-message.ai {
-  background: linear-gradient(135deg, #5f1aff, #9b59ff);
+  background-color: #3d1a5f; /* 單色深紫 */
   color: #fff;
 }
 
