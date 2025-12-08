@@ -20,12 +20,15 @@ export default function ChatApp() {
   const messagesEndRef = useRef(null);
   const autoLeaveRef = useRef(null);
 
+  // Socket 訊息接收
   useEffect(() => {
     socket.on("message", (m) => {
       setMessages(s => [...s, m]);
       if (m.user && aiAvatars[m.user.name] && m.target) setTyping("");
     });
-    socket.on("systemMessage", (m) => setMessages(s => [...s, { user: { name: "系統" }, message: m }]));
+    socket.on("systemMessage", (m) =>
+      setMessages(s => [...s, { user: { name: "系統" }, message: m }])
+    );
     socket.on("updateUsers", (list) => setUserList(list));
 
     return () => {
@@ -35,16 +38,20 @@ export default function ChatApp() {
     };
   }, []);
 
+  // 自動滾動
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // 加入房間
   const join = () => {
     socket.emit("joinRoom", { room, user: { name } });
     setJoined(true);
-    if (autoLeaveTime > 0) autoLeaveRef.current = setTimeout(() => leave(), autoLeaveTime * 1000);
+    if (autoLeaveTime > 0)
+      autoLeaveRef.current = setTimeout(() => leave(), autoLeaveTime * 1000);
   };
 
+  // 離開房間
   const leave = () => {
     socket.emit("leaveRoom", { room, user: { name } });
     setJoined(false);
@@ -52,6 +59,7 @@ export default function ChatApp() {
     if (autoLeaveRef.current) clearTimeout(autoLeaveRef.current);
   };
 
+  // 發送訊息
   const send = () => {
     if (!text || !joined) return;
     socket.emit("message", { room, message: text, user: { name }, target });
@@ -62,6 +70,7 @@ export default function ChatApp() {
     <div className="chat-container">
       <h2>尋夢園聊天室</h2>
 
+      {/* 設定區 */}
       <div className="chat-settings">
         <div className="form-group">
           <label>暱稱</label>
@@ -78,11 +87,12 @@ export default function ChatApp() {
           <input type="number" min="0" value={autoLeaveTime} onChange={e => setAutoLeaveTime(Number(e.target.value))} />
         </div>
         <div className="form-group">
-          <label>動作</label>
+          <label>操作</label>
           <button onClick={joined ? leave : join}>{joined ? "離開" : "加入"}</button>
         </div>
       </div>
 
+      {/* 主區 */}
       <div className="chat-main">
         {/* 聊天區 */}
         <div className="chat-box">
@@ -90,14 +100,15 @@ export default function ChatApp() {
             {messages.map((m, i) => {
               const isSelf = m.user?.name === name;
               const isAI = aiAvatars[m.user?.name];
-              const profile = aiProfiles[m.user?.name] || { color: isAI ? "#fff" : "#fff" };
+              const profile = aiProfiles[m.user?.name] || { color: isAI ? "#d6b3ff" : "#fff" };
               let cls = "chat-message";
               if (isSelf) cls += " self";
               else if (isAI) cls += " ai";
               else if (m.user?.name === "系統") cls += " system";
+
               return (
-                <div key={i} className="message-row" style={{ justifyContent: isSelf ? "flex-end" : "flex-start" }}>
-                  {!isSelf && isAI && <img src={aiAvatars[m.user?.name]} alt={m.user.name} className="message-avatar" />}
+                <div key={i} style={{ display: "flex", justifyContent: isSelf ? "flex-end" : "flex-start", marginBottom: "6px" }}>
+                  {!isSelf && isAI && <img src={aiAvatars[m.user?.name]} alt={m.user.name} />}
                   <div className={cls} style={{ color: m.user?.name === "系統" ? "#ff5555" : profile.color }}>
                     <strong>{m.user?.name}{m.target ? ` 對 ${m.target} 說` : ""}：</strong> {m.message}
                   </div>
@@ -129,9 +140,7 @@ export default function ChatApp() {
         <div className="user-list">
           <div className="user-list-header">
             <strong>在線人數: {userList.length}</strong>
-            <button onClick={() => setShowUserList(!showUserList)}>
-              {showUserList ? "▼" : "▲"}
-            </button>
+            <button onClick={() => setShowUserList(!showUserList)}>{showUserList ? "▼" : "▲"}</button>
           </div>
           {showUserList && (
             <div className="user-list-content">
@@ -139,8 +148,12 @@ export default function ChatApp() {
                 const isSelected = u.name === target;
                 const avatar = aiAvatars[u.name];
                 return (
-                  <div key={u.id} className={`user-item${isSelected ? " selected" : ""}`} onClick={() => setTarget(u.name)}>
-                    {avatar && <img src={avatar} alt={u.name} className="user-avatar" />}
+                  <div
+                    key={u.id}
+                    className={`user-item${isSelected ? " selected" : ""}`}
+                    onClick={() => setTarget(u.name)}
+                  >
+                    {avatar && <img src={avatar} alt={u.name} />}
                     {u.name}
                   </div>
                 );
