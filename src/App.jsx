@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 
-const socket = io(import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001');
+const socket = io(import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000');
 
 const aiAvatars = {
   "林怡君": "/avatars/g01.gif",
@@ -36,11 +36,12 @@ export default function ChatApp() {
 
   const messagesEndRef = useRef(null);
   const autoLeaveRef = useRef(null);
+  const aiLoopRef = useRef(null);
 
   useEffect(() => {
     socket.on("message", (m) => {
       setMessages(s => [...s, m]);
-      if (m.user && aiAvatars[m.user.name] && m.to) {
+      if (m.user && aiAvatars[m.user.name] && m.target) {
         setTyping(""); // AI 回覆後清除正在輸入
       }
     });
@@ -68,6 +69,7 @@ export default function ChatApp() {
     socket.emit("joinRoom", { room, user: { name } });
     setJoined(true);
     if (autoLeaveTime > 0) autoLeaveRef.current = setTimeout(() => leave(), autoLeaveTime * 1000);
+    startAIAutoTalk();
   };
 
   const leave = () => {
@@ -75,40 +77,77 @@ export default function ChatApp() {
     setJoined(false);
     setMessages(s => [...s, { user: { name: "系統" }, message: `${name} 離開房間` }]);
     if (autoLeaveRef.current) clearTimeout(autoLeaveRef.current);
+    if (aiLoopRef.current) clearTimeout(aiLoopRef.current);
   };
 
   const send = () => {
     if (!text || !joined) return;
 
-    // 如果選擇了 AI 作為目標，延遲 2 秒顯示「正在輸入」
     let typingTimeout;
     if (target && aiAvatars[target]) {
-      typingTimeout = setTimeout(() => {
-        setTyping(`${target} 正在輸入...`);
-      }, 2000);
+      typingTimeout = setTimeout(() => setTyping(`${target} 正在輸入...`), 2000);
     }
 
     socket.emit("message", { room, message: text, user: { name }, target });
     setText("");
 
-    // 監聽 AI 回覆事件，收到後清除 typing
     const clearTyping = (m) => {
       if (m.user?.name === target) {
         setTyping("");
-        socket.off("message", clearTyping); // 清掉監聽
-        if (typingTimeout) clearTimeout(typingTimeout); // 如果還沒顯示也取消
+        socket.off("message", clearTyping);
+        if (typingTimeout) clearTimeout(typingTimeout);
       }
     };
 
     socket.on("message", clearTyping);
   };
 
+  const startAIAutoTalk = () => {
+    if (aiLoopRef.current) return;
+
+    const loop = async () => {
+      const ais = userList.filter(u => aiAvatars[u.name]);
+      if (!ais.length) return;
+
+      if (Math.random() < 0.25) {
+        const speaker = ais[Math.floor(Math.random() * ais.length)];
+        const lastUser = messages.slice(-1)[0]?.user?.name || "大家";
+
+        setTyping(`${speaker.name} 正在輸入...`);
+
+        try {
+          const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}/ai/reply`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              room,
+              userMessage: `接續 ${lastUser} 的話題聊聊`,
+              aiName: speaker.name,
+              roomContext: messages.map(m => ({ user: m.user?.name, text: m.message }))
+            })
+          });
+          const data = await response.json();
+          const aiReply = data.reply || "嗯嗯～";
+
+          socket.emit("message", { room, message: aiReply, user: { name: speaker.name }, target: lastUser });
+        } catch (err) {
+          console.error("[AI 前端 fetch error]", err);
+        } finally {
+          setTyping("");
+        }
+      }
+
+      const delay = 18000 + Math.random() * 17000;
+      aiLoopRef.current = setTimeout(loop, delay);
+    };
+
+    loop();
+  };
 
   return (
     <div className="container mt-3">
       <h2 className="text-center mb-3">尋夢園聊天室</h2>
 
-      {/* 控制面板 */}
       <div className="row g-2 mb-3">
         <div className="col-6 col-md-3">
           <label className="form-label">暱稱</label>
@@ -130,7 +169,6 @@ export default function ChatApp() {
       </div>
 
       <div className="row">
-        {/* 在線使用者列表 */}
         <div className={`col-12 col-md-3 mb-2`}>
           <div className="d-flex justify-content-between align-items-center mb-1">
             <strong>在線人數: {userList.length}</strong>
@@ -142,7 +180,7 @@ export default function ChatApp() {
             <div className="card" style={{ maxHeight: "400px", overflowY: "auto" }}>
               <ul className="list-group list-group-flush">
                 {userList.map(u => (
-                  <li key={u.id} className="list-group-item">
+                  <li key={u.id} className="list-group-item" style={{ cursor: 'pointer' }} onClick={() => setTarget(u.name)}>
                     {u.name}
                   </li>
                 ))}
@@ -151,7 +189,6 @@ export default function ChatApp() {
           )}
         </div>
 
-        {/* 聊天區 */}
         <div className="col-12 col-md-9">
           <div className="card mb-2" style={{ height: "400px", overflowY: "auto", padding: "10px" }}>
             {messages.map((m, i) => {
@@ -181,7 +218,6 @@ export default function ChatApp() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* 輸入區 */}
           <div className="input-group mb-3">
             <select className="form-select" value={target} onChange={e => setTarget(e.target.value)}>
               <option value="">發送給全部</option>
