@@ -144,6 +144,5 @@ export default function ChatApp() {
         </div>
       </div>
     </div>
-    </div >
   );
 }
