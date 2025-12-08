@@ -1,57 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { io } from "socket.io-client";
+import { aiAvatars, aiProfiles } from "./aiConfig";
 
 const socket = io(import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000');
-
-const aiAvatars = {
-  "林怡君": "/avatars/g01.gif",
-  "張雅婷": "/avatars/g02.gif",
-  "陳思妤": "/avatars/g03.gif",
-  "黃彥廷": "/avatars/b01.gif",
-  "王子涵": "/avatars/b02.gif",
-  "劉家瑋": "/avatars/b03.gif",
-  "李佩珊": "/avatars/g04.gif",
-  "蔡承翰": "/avatars/b04.gif",
-  "許婉婷": "/avatars/g05.gif",
-  "周俊宏": "/avatars/b05.gif",
-  "何詩涵": "/avatars/g06.gif",
-  "鄭宇翔": "/avatars/b06.gif",
-  "郭心怡": "/avatars/g07.gif",
-  "江柏翰": "/avatars/b07.gif",
-  "曾雅雯": "/avatars/g08.gif",
-  "施俊傑": "/avatars/b08.gif",
-};
-
-const aiProfiles = {
-  "林怡君": {
-    color: "purple",
-    phrases: ["哈哈～", "真的嗎？", "好有趣！"],
-    templates: [
-      "我覺得 {lastUser} 說的很有趣！",
-      "你們知道嗎？我最近發現了……",
-      "對啊～我也這麼想！"
-    ]
-  },
-  "黃彥廷": {
-    color: "green",
-    phrases: ["XD", "這不錯！", "你說什麼？"],
-    templates: [
-      "{lastUser} 的意思是……？哈哈",
-      "我也想說同樣的事！",
-      "真的嗎？我沒想到這點！"
-    ]
-  },
-  "曾雅雯": {
-    color: "pink",
-    phrases: ["嗯嗯～", "好耶！", "哈哈～"],
-    templates: [
-      "我剛剛在想 {lastUser} 說的事",
-      "你們覺得呢？",
-      "這個話題好有趣啊！"
-    ]
-  },
-  // 可以增加其他 AI
-};
 
 export default function ChatApp() {
   const [room, setRoom] = useState("public");
@@ -68,6 +19,7 @@ export default function ChatApp() {
   const messagesEndRef = useRef(null);
   const autoLeaveRef = useRef(null);
   const aiLoopRef = useRef(null);
+  const topicCountRef = useRef({}); // 記錄話題發言次數
 
   // --- Socket 事件 ---
   useEffect(() => {
@@ -90,7 +42,6 @@ export default function ChatApp() {
     };
   }, []);
 
-  // --- 自動滾動訊息 ---
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, typing]);
@@ -143,21 +94,25 @@ export default function ChatApp() {
       const humanUsers = userList.filter(u => !aiAvatars[u.name]);
       if (!ais.length) return;
 
-      for (let speaker of ais) {
-        if (activeAILoop[speaker.name]) continue; // AI 正在回覆則跳過
+      const lastMessage = messages.slice(-1)[0];
+      const lastUser = lastMessage?.user?.name || "大家";
+      const topicKey = lastMessage?.message || "default";
 
+      if (!topicCountRef.current[topicKey]) topicCountRef.current[topicKey] = 0;
+      if (topicCountRef.current[topicKey] >= 4) return; // 話題超過次數就停
+
+      for (let speaker of ais) {
+        if (activeAILoop[speaker.name]) continue;
         activeAILoop[speaker.name] = true;
 
-        const typingDelay = 1000 + Math.random() * 2000;
+        const typingDelay = 2000 + Math.random() * 2000;
         setTimeout(() => setTyping(`${speaker.name} 正在輸入...`), typingDelay);
 
-        const lastMessage = messages.slice(-1)[0];
-        const lastUser = lastMessage?.user?.name || "大家";
         const targetUser = humanUsers.length && Math.random() < 0.7
           ? humanUsers[Math.floor(Math.random() * humanUsers.length)].name
           : "";
 
-        const profile = aiProfiles[speaker.name] || { templates: ["嗯嗯～"], phrases: ["嗯嗯～"], color: "purple" };
+        const profile = aiProfiles[speaker.name];
         const template = profile.templates[Math.floor(Math.random() * profile.templates.length)];
         const suffix = profile.phrases[Math.floor(Math.random() * profile.phrases.length)];
         const aiReply = template.replace("{lastUser}", lastUser) + " " + suffix;
@@ -169,11 +124,14 @@ export default function ChatApp() {
           target: targetUser
         });
 
-        setTimeout(() => setTyping(""), 2000);
-        setTimeout(() => activeAILoop[speaker.name] = false, 15000 + Math.random() * 10000);
+        topicCountRef.current[topicKey] += 1;
+
+        setTimeout(() => setTyping(""), 3000);
+        setTimeout(() => activeAILoop[speaker.name] = false, 25000 + Math.random() * 15000);
       }
 
-      aiLoopRef.current = setTimeout(loop, 15000 + Math.random() * 10000);
+      const nextDelay = 20000 + Math.random() * 20000; // 20~40 秒
+      aiLoopRef.current = setTimeout(loop, nextDelay);
     };
 
     loop();
@@ -184,7 +142,7 @@ export default function ChatApp() {
     };
   }, [userList, joined, messages]);
 
-  // --- JSX 渲染 ---
+  // --- JSX ---
   return (
     <div className="container mt-3">
       <h2 className="text-center mb-3">尋夢園聊天室</h2>
@@ -265,7 +223,7 @@ export default function ChatApp() {
               <option value="">發送給全部</option>
               {userList.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
             </select>
-            <input type="text" className="form-control" placeholder={joined ? "輸入訊息後按 Enter 發送" : "請先加入房間"} value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} disabled={!joined} />
+            <input type="text" className="form-control" placeholder={joined ? "輸入訊息後按 Enter 發送" : "請先加入房間"} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} disabled={!joined} />
             <button className="btn btn-primary" onClick={send} disabled={!joined}>發送</button>
           </div>
         </div>
