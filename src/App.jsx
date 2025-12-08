@@ -1,15 +1,16 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import LoginGuest from "./pages/LoginGuest";
-import ChatApp from "./pages/ChatApp";
+import ChatApp from "./ChatApp";
+import LoginGuest from "./LoginGuest";
 
-export default function App() {
+function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<LoginGuest />} />
+        <Route path="/" element={<ChatApp />} />
         <Route path="/login" element={<LoginGuest />} />
-        <Route path="/chat" element={<ChatApp />} />
       </Routes>
     </BrowserRouter>
   );
 }
+
+export default App;
