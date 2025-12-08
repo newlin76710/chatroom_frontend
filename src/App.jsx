@@ -89,14 +89,14 @@ export default function ChatApp() {
             {messages.map((m, i) => {
               const isSelf = m.user?.name === name;
               const isAI = aiAvatars[m.user?.name];
-              const profile = aiProfiles[m.user?.name] || { color: isAI ? "#d6b3ff" : "#fff" };
+              const profile = aiProfiles[m.user?.name] || { color: isAI ? "#fff" : "#fff" };
               let cls = "chat-message";
               if (isSelf) cls += " self";
               else if (isAI) cls += " ai";
               else if (m.user?.name === "系統") cls += " system";
               return (
-                <div key={i} style={{ display: "flex", justifyContent: isSelf ? "flex-end" : "flex-start", marginBottom: "6px" }}>
-                  {!isSelf && isAI && <img src={aiAvatars[m.user?.name]} alt={m.user.name} />}
+                <div key={i} className="message-row" style={{ justifyContent: isSelf ? "flex-end" : "flex-start" }}>
+                  {!isSelf && isAI && <img src={aiAvatars[m.user?.name]} alt={m.user.name} className="message-avatar" />}
                   <div className={cls} style={{ color: m.user?.name === "系統" ? "#ff5555" : profile.color }}>
                     <strong>{m.user?.name}{m.target ? ` 對 ${m.target} 說` : ""}：</strong> {m.message}
                   </div>
@@ -112,7 +112,14 @@ export default function ChatApp() {
               <option value="">發送給全部</option>
               {userList.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
             </select>
-            <input type="text" value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} disabled={!joined} placeholder={joined ? "輸入訊息後按 Enter 發送" : "請先加入房間"} />
+            <input
+              type="text"
+              value={text}
+              onChange={e => setText(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && send()}
+              disabled={!joined}
+              placeholder={joined ? "輸入訊息後按 Enter 發送" : "請先加入房間"}
+            />
             <button onClick={send} disabled={!joined}>發送</button>
           </div>
         </div>
@@ -131,12 +138,8 @@ export default function ChatApp() {
                 const isSelected = u.name === target;
                 const avatar = aiAvatars[u.name];
                 return (
-                  <div
-                    key={u.id}
-                    className={`user-item${isSelected ? " selected" : ""}`}
-                    onClick={() => setTarget(u.name)}
-                  >
-                    {avatar && <img src={avatar} alt={u.name} style={{ width: "24px", height: "24px", borderRadius: "50%" }} />}
+                  <div key={u.id} className={`user-item${isSelected ? " selected" : ""}`} onClick={() => setTarget(u.name)}>
+                    {avatar && <img src={avatar} alt={u.name} className="user-avatar" />}
                     {u.name}
                   </div>
                 );
