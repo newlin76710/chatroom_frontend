@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { io } from "socket.io-client";
-import { aiAvatars } from "./aiConfig";
+import { aiAvatars, aiProfiles } from "./aiConfig";
 
 const socket = io(import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000');
 
@@ -78,41 +78,46 @@ export default function ChatApp() {
 
   // --- AI 自動請求（後端生成） ---
   useEffect(() => {
-    if (!joined) return;
+    if (!joined || userList.length === 0) return;
 
     const loop = async () => {
-      const ais = userList.filter(u => aiAvatars[u.name]);
+      const ais = userList.filter((u) => aiAvatars[u.name]);
       if (!ais.length) return;
 
       const lastMessage = messages.slice(-1)[0];
       if (!lastMessage) return;
 
       const topicKey = lastMessage.message || "default";
-      if (!topicCountRef.current[topicKey]) topicCountRef.current[topicKey] = 0;
-      if (topicCountRef.current[topicKey] >= 4) return; // 話題發言次數限制
+      if (!topicCountRef.current[topicKey]) topicCountRef.current[topicKey] = {};
 
       for (let speaker of ais) {
-        // 打字提示
+        if (!topicCountRef.current[topicKey][speaker.name]) topicCountRef.current[topicKey][speaker.name] = 0;
+        if (topicCountRef.current[topicKey][speaker.name] >= 2) continue; // 限制每個 AI 最多回覆 2 次
+
         setTyping(`${speaker.name} 正在輸入...`);
 
         try {
-          // 請求後端 AI 回覆
-          const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}/ai/reply`, {
+          const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || "http://localhost:3000"}/ai/reply`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               room,
               aiName: speaker.name,
               lastMessage: lastMessage.message,
-              roomContext: messages.map(m => ({ user: m.user?.name, text: m.message }))
-            })
+              roomContext: messages.map((m) => ({ user: m.user?.name, text: m.message })),
+            }),
           });
           const data = await response.json();
           const aiReply = data.reply || "嗯～";
 
-          // 發送 AI 回覆
-          socket.emit("message", { room, message: aiReply, user: { name: speaker.name }, target: lastMessage.user?.name || "" });
-          topicCountRef.current[topicKey] += 1;
+          socket.emit("message", {
+            room,
+            message: aiReply,
+            user: { name: speaker.name },
+            target: lastMessage.user?.name || "",
+          });
+
+          topicCountRef.current[topicKey][speaker.name] += 1;
         } catch (err) {
           console.error("[AI fetch error]", err);
         } finally {
