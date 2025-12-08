@@ -1,4 +1,4 @@
-/* body & container */
+/* ===== 全局 & 容器 ===== */
 body, .chat-container {
   background-color: #121212;
   color: #fff;
@@ -7,23 +7,22 @@ body, .chat-container {
   padding: 20px;
   display: flex;
   justify-content: center;
-  align-items: center;
   font-family: Arial, sans-serif;
 }
 
 .chat-container {
   width: 100%;
-  max-width: 1000px;
+  max-width: 1100px;
   display: flex;
   flex-direction: column;
   gap: 15px;
 }
 
-/* 設定區 */
+/* ===== 設定區 ===== */
 .chat-settings {
   display: flex;
-  gap: 10px;
   flex-wrap: wrap;
+  gap: 10px;
 }
 
 .chat-settings .form-group {
@@ -34,68 +33,40 @@ body, .chat-container {
 
 .chat-settings input,
 .chat-settings select {
-  padding: 6px 8px;
+  padding: 6px 10px;
   background-color: #1a1a1a;
   border: 1px solid #555;
   color: #fff;
   border-radius: 4px;
 }
 
-/* 加入/離開按鈕 */
 .chat-settings button {
   width: 100%;
   padding: 8px;
   background-color: #6200ee;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   color: #fff;
   cursor: pointer;
+  transition: background-color 0.2s;
 }
 
 .chat-settings button:hover {
   background-color: #7a33ff;
 }
 
-/* 主區 */
+/* ===== 主區 ===== */
 .chat-main {
   display: flex;
   gap: 10px;
   height: 500px;
+  background-color: #1b1b1b;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 0 10px #000;
 }
 
-/* 使用者列表 */
-.user-list {
-  flex: 0 0 200px;
-  display: flex;
-  flex-direction: column;
-}
-
-.user-list-header {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 5px;
-}
-
-.user-list-content {
-  flex: 1;
-  overflow-y: auto;
-  background-color: #1a1a1a;
-  border-radius: 4px;
-  border: 1px solid #555;
-}
-
-.user-list-content .user-item {
-  padding: 5px 10px;
-  border-bottom: 1px solid #555;
-  cursor: pointer;
-  color: #fff;
-}
-
-.user-list-content .user-item:hover {
-  background-color: #2a2a2a;
-}
-
-/* 聊天區 */
+/* ----- 聊天區 ----- */
 .chat-box {
   flex: 1;
   display: flex;
@@ -104,19 +75,20 @@ body, .chat-container {
 
 .chat-messages {
   flex: 1;
-  background-color: #1a1a1a;
   padding: 10px;
   overflow-y: auto;
-  border-radius: 4px;
-  border: 1px solid #555;
+  background-color: #1a1a1a;
+  border-radius: 8px 8px 0 0;
 }
 
 .chat-message {
-  margin-bottom: 6px;
-  max-width: 75%;
+  margin-bottom: 8px;
+  max-width: 70%;
   word-break: break-word;
-  padding: 6px 10px;
-  border-radius: 6px;
+  overflow-wrap: break-word;
+  padding: 8px 12px;
+  border-radius: 12px;
+  line-height: 1.4;
 }
 
 .chat-message.self {
@@ -131,6 +103,7 @@ body, .chat-container {
 .chat-message.system {
   background-color: #5f1a1a;
   color: #ff5555;
+  text-align: center;
 }
 
 .chat-message img {
@@ -145,44 +118,102 @@ body, .chat-container {
 .typing {
   font-style: italic;
   color: #aaa;
+  margin-top: 5px;
+  position: relative;
+}
+
+.typing::after {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 3px;
+  border-radius: 50%;
+  background-color: #aaa;
+  animation: blink 1s infinite alternate;
+}
+
+@keyframes blink {
+  0%,100% { opacity: 0; }
+  50% { opacity: 1; }
 }
 
 /* 輸入區 */
 .chat-input {
   display: flex;
-  margin-top: 6px;
   gap: 6px;
+  padding: 8px;
+  background-color: #1a1a1a;
+  border-top: 1px solid #555;
 }
 
 .chat-input select {
   flex: 0 0 150px;
   padding: 6px;
-  background-color: #1a1a1a;
+  border-radius: 6px;
   border: 1px solid #555;
+  background-color: #1a1a1a;
   color: #fff;
-  border-radius: 4px;
 }
 
 .chat-input input {
   flex: 1;
-  padding: 6px 8px;
-  background-color: #1a1a1a;
+  padding: 6px 10px;
+  border-radius: 6px;
   border: 1px solid #555;
+  background-color: #1a1a1a;
   color: #fff;
-  border-radius: 4px;
 }
 
 .chat-input button {
-  padding: 6px 10px;
+  padding: 6px 12px;
+  border-radius: 6px;
   background-color: #6200ee;
   border: none;
-  border-radius: 4px;
   color: #fff;
   cursor: pointer;
+  transition: 0.2s;
 }
 
 .chat-input button:hover {
   background-color: #7a33ff;
+}
+
+/* ----- 使用者列表 (右側) ----- */
+.user-list {
+  flex: 0 0 200px;
+  display: flex;
+  flex-direction: column;
+  order: 2;
+  background-color: #1a1a1a;
+}
+
+.user-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  border-bottom: 1px solid #555;
+  font-weight: bold;
+}
+
+.user-list-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.user-list-content .user-item {
+  padding: 6px 10px;
+  border-bottom: 1px solid #555;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.user-list-content .user-item.selected,
+.user-list-content .user-item:hover {
+  background-color: #2a2a2a;
 }
 
 /* 滾動條 */
@@ -200,4 +231,26 @@ body, .chat-container {
 .user-list-content::-webkit-scrollbar-track,
 .chat-messages::-webkit-scrollbar-track {
   background-color: #222;
+}
+
+/* ===== 響應式 ===== */
+@media (max-width: 768px) {
+  .chat-main {
+    flex-direction: column;
+    height: auto;
+  }
+  .user-list {
+    order: 1;
+    width: 100%;
+    flex-direction: row;
+    overflow-x: auto;
+  }
+  .user-list-content {
+    display: flex;
+    flex-direction: row;
+  }
+  .user-list-content .user-item {
+    border-bottom: none;
+    border-right: 1px solid #555;
+  }
 }
