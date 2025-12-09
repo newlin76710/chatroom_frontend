@@ -69,6 +69,13 @@ export default function ChatApp() {
     socket.emit("leaveRoom", { room, user: { name } });
     setJoined(false);
     setMessages(s => [...s, { user: { name: "系統" }, message: `${name} 離開房間` }]);
+    // 清除本地登入資料
+    localStorage.removeItem("guestToken");
+    localStorage.removeItem("name");
+    localStorage.removeItem("authToken");
+
+    // 導回登入頁
+    navigate("/login");
   };
 
   // 發送訊息
