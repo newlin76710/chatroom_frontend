@@ -20,6 +20,11 @@ export default function ChatApp() {
   const [userList, setUserList] = useState([]);
   const [showUserList, setShowUserList] = useState(true);
 
+  // 點歌相關
+  const [songText, setSongText] = useState("");
+  const [songList, setSongList] = useState([]);
+  const [currentSong, setCurrentSong] = useState(null);
+
   const messagesEndRef = useRef(null);
 
   // 自動滾動到底部
@@ -36,10 +41,16 @@ export default function ChatApp() {
     socket.on("systemMessage", (m) => setMessages(s => [...s, { user: { name: "系統" }, message: m }]));
     socket.on("updateUsers", (list) => setUserList(list));
 
+    // 點歌事件
+    socket.on("songListUpdate", (list) => setSongList(list));
+    socket.on("songPlay", (song) => setCurrentSong(song));
+
     return () => {
       socket.off("message");
       socket.off("systemMessage");
       socket.off("updateUsers");
+      socket.off("songListUpdate");
+      socket.off("songPlay");
     };
   }, []);
 
@@ -120,6 +131,13 @@ export default function ChatApp() {
     setText("");
   };
 
+  // 點歌
+  const addSong = () => {
+    if (!songText.trim() || !joined) return;
+    socket.emit("songRequest", { user: name, text: songText });
+    setSongText("");
+  };
+
   return (
     <div className="chat-container">
       <h2>尋夢園聊天室</h2>
@@ -174,6 +192,35 @@ export default function ChatApp() {
               placeholder={joined ? "輸入訊息後按 Enter 發送" : "請先登入"}
             />
             <button onClick={send} disabled={!joined}>發送</button>
+          </div>
+
+          {/* 點歌區 */}
+          <div className="song-box">
+            <h3>點歌 / 播放 YouTube</h3>
+            <input
+              type="text"
+              value={songText}
+              onChange={e => setSongText(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && addSong()}
+              placeholder="輸入 YouTube 連結或歌曲名稱"
+              disabled={!joined}
+            />
+            <button onClick={addSong} disabled={!joined}>加入播放清單</button>
+
+            {currentSong && (
+              <div className="current-song">
+                <strong>正在播放:</strong> {currentSong.text} (由 {currentSong.user} 點)
+              </div>
+            )}
+
+            <div className="song-list">
+              <strong>播放清單:</strong>
+              <ul>
+                {songList.map((s, i) => (
+                  <li key={i}>{s.text} (由 {s.user} 點)</li>
+                ))}
+              </ul>
+            </div>
           </div>
         </div>
 
