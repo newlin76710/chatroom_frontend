@@ -1,7 +1,7 @@
 /* ===== 全域樣式 ===== */
 body, .chat-container {
   background-color: #121212;
-  color: #eee; /* 統一文字顏色為淺灰白 */
+  color: #eee;
   min-height: 100vh;
   margin: 0;
   padding: 20px;
@@ -14,42 +14,6 @@ body, .chat-container {
   display: flex;
   flex-direction: column;
   gap: 15px;
-}
-
-/* ===== Chat Settings ===== */
-.chat-settings {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.chat-settings .form-group {
-  flex: 1 1 150px;
-  display: flex;
-  flex-direction: column;
-}
-
-.chat-settings input,
-.chat-settings select {
-  padding: 6px 8px;
-  background-color: #1a1a1a;
-  border: 1px solid #555;
-  color: #eee;
-  border-radius: 4px;
-}
-
-.chat-settings button {
-  width: 100%;
-  padding: 8px;
-  background-color: #6200ee;
-  border: none;
-  border-radius: 4px;
-  color: #fff;
-  cursor: pointer;
-}
-
-.chat-settings button:hover {
-  background-color: #7a33ff;
 }
 
 /* ===== 主區域 ===== */
@@ -89,28 +53,47 @@ body, .chat-container {
   padding: 6px 10px;
   border-radius: 6px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-  color: #eee; /* 統一文字顏色 */
 }
 
+/* 系統訊息 */
+.chat-message.system {
+  align-self: center;
+  background-color: #ff9800;
+  color: #000;
+  font-weight: bold;
+}
+
+/* 自己訊息 */
 .chat-message.self {
   align-self: flex-end;
-  background-color: #2a2a2a;
+  background-color: #3f51b5;
+  color: #fff;
 }
 
+/* AI 訊息 */
 .chat-message.ai {
-  background-color: #3d1a5f;
+  background-color: #8e24aa;
+  color: #fff;
 }
 
-.chat-message.system {
-  background-color: #5f1a1a;
-  color: #ff5555;
+/* 其他使用者訊息 */
+.chat-message.other {
+  background-color: #2a2a2a;
+  color: #eee;
 }
 
-/* 頭貼 */
+/* 打字提示 */
+.typing {
+  font-style: italic;
+  color: #aaa;
+  margin: 4px 0;
+}
+
+/* ===== 頭貼固定 ===== */
 .chat-message img,
 .user-item img {
-  width: 24px;
-  height: 24px;
+  width: 24px !important;
+  height: 24px !important;
   border-radius: 50%;
   margin-right: 6px;
   border: 1px solid #555;
@@ -122,12 +105,6 @@ body, .chat-container {
   flex: 0 0 200px;
   display: flex;
   flex-direction: column;
-}
-
-.user-list-header {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 5px;
 }
 
 .user-list-content {
@@ -187,11 +164,6 @@ body, .chat-container {
 
 .chat-input button:hover {
   background-color: #7a33ff;
-}
-
-.typing {
-  font-style: italic;
-  color: #aaa;
 }
 
 /* ===== 影片播放器 ===== */
@@ -259,7 +231,7 @@ body, .chat-container {
   .chat-message.ai,
   .chat-message.self,
   .chat-message.system {
-    color: #eee; /* 文字保持清楚 */
+    color: inherit;
   }
 
   body,
@@ -269,7 +241,6 @@ body, .chat-container {
     background-color: #121212;
   }
 
-  /* 手機版影片更小 */
   .video-player-float {
     width: 150px;
     bottom: 10px;
