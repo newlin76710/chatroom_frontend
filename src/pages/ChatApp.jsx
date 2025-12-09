@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 import { aiAvatars, aiProfiles } from "./aiConfig";
-import YouTube from "react-youtube";
+import MessageList from "./MessageList";
+import VideoPlayer from "./VideoPlayer";
 import './ChatApp.css';
 
 const BACKEND = import.meta.env.VITE_BACKEND_URL || 'http://localhost:10000';
@@ -18,9 +19,7 @@ export default function ChatApp() {
   const [target, setTarget] = useState("");
   const [typing, setTyping] = useState("");
   const [userList, setUserList] = useState([]);
-
   const [currentVideo, setCurrentVideo] = useState(null);
-  const [videoQueue, setVideoQueue] = useState([]);
   const [videoUrl, setVideoUrl] = useState("");
 
   const messagesEndRef = useRef(null);
@@ -36,31 +35,25 @@ export default function ChatApp() {
       setMessages((s) => [...s, m]);
       if (m.user && aiAvatars[m.user.name] && m.target) setTyping("");
     });
-
     socket.on("systemMessage", (m) =>
       setMessages((s) => [...s, { user: { name: "系統" }, message: m }])
     );
-
     socket.on("updateUsers", (list) => setUserList(list));
     socket.on("videoUpdate", (video) => setCurrentVideo(video));
-    socket.on("videoQueueUpdate", (queue) => setVideoQueue(queue));
 
     return () => {
       socket.off("message");
       socket.off("systemMessage");
       socket.off("updateUsers");
       socket.off("videoUpdate");
-      socket.off("videoQueueUpdate");
     };
   }, []);
 
   /* 自動登入 */
   useEffect(() => {
     const storedName = localStorage.getItem("name");
-    const storedToken =
-      localStorage.getItem("token") || localStorage.getItem("guestToken");
+    const storedToken = localStorage.getItem("token") || localStorage.getItem("guestToken");
     const type = localStorage.getItem("type");
-
     if (!storedName) return;
 
     setName(storedName);
@@ -74,12 +67,10 @@ export default function ChatApp() {
     setJoined(true);
   }, []);
 
-  /* 訪客登入 */
   const loginGuest = async () => {
     try {
       const res = await fetch(`${BACKEND}/auth/guest`, { method: "POST" });
       const data = await res.json();
-
       if (!data.guestToken) throw new Error("訪客登入失敗");
 
       localStorage.setItem("guestToken", data.guestToken);
@@ -95,7 +86,6 @@ export default function ChatApp() {
     }
   };
 
-  /* 正式帳號登入 */
   const loginAccount = (username, token) => {
     localStorage.setItem("token", token);
     localStorage.setItem("name", username);
@@ -107,75 +97,46 @@ export default function ChatApp() {
     joinRoom(username, "account", token);
   };
 
-  /* 加入房間 */
   const joinRoom = (username, type = "guest", t = "") => {
     socket.emit("joinRoom", { room, user: { name: username, type, token: t } });
     setJoined(true);
   };
 
-  /* 離開房間 */
   const leaveRoom = () => {
     socket.emit("leaveRoom", { room, user: { name } });
     setJoined(false);
-
     localStorage.removeItem("guestToken");
     localStorage.removeItem("token");
     localStorage.removeItem("name");
     localStorage.removeItem("type");
-
     window.location.href = "/login";
   };
 
-  /* 發送訊息 */
   const send = () => {
     if (!text || !joined) return;
-
     socket.emit("message", { room, message: text, user: { name }, target });
     setText("");
   };
 
-  /* 取得 YouTube videoId（支援多種連結格式） */
   const extractVideoID = (url) => {
     if (!url) return null;
-
-    // 支援完整連結
-    let match = url.match(/v=([a-zA-Z0-9_-]{11})/);
-    if (match) return match[1];
-
-    // 支援短連結 youtu.be/xxxx
-    match = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
-    if (match) return match[1];
-
-    // 支援 shorts 連結 youtube.com/shorts/xxxx
-    match = url.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/);
-    if (match) return match[1];
-
-    return null;
+    let match = url.match(/v=([a-zA-Z0-9_-]{11})/) || url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/) || url.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/);
+    return match ? match[1] : null;
   };
 
-  /* 發送 YouTube 點播 */
   const playVideo = () => {
     if (!videoUrl.trim()) return;
-
     const videoId = extractVideoID(videoUrl.trim());
     if (!videoId) {
       alert("無法解析此 YouTube 連結，請確認格式是否正確。");
       return;
     }
-
     socket.emit("playVideo", {
       room,
       url: `https://www.youtube.com/watch?v=${videoId}`,
       user: name,
     });
-
     setVideoUrl("");
-  };
-
-  /* 播放器準備好後解除靜音（手機需要先 muted autoplay 才能啟動） */
-  const onPlayerReady = (event) => {
-    event.target.unMute();
-    event.target.setVolume(100);
   };
 
   return (
@@ -192,55 +153,14 @@ export default function ChatApp() {
       )}
 
       <div className="chat-main">
-        {/* 聊天區 */}
         <div className="chat-box">
-          <div className="chat-messages">
-            {messages.map((m, i) => {
-              const isSelf = m.user?.name === name;
-              const isSystem = m.user?.name === "系統";
-              const isAI = aiAvatars[m.user?.name];
-              const profile = aiProfiles[m.user?.name];
-
-              let msgClass = "chat-message";
-              if (isSystem) msgClass += " system";
-              else if (isSelf) msgClass += " self";
-              else if (isAI) msgClass += " ai";
-              else msgClass += " other";
-
-              const color = isSystem
-                ? "#ff9900"
-                : isSelf
-                  ? "#fff"
-                  : profile?.color || "#eee";
-
-              return (
-                <div
-                  key={i}
-                  className="message-row"
-                  style={{ justifyContent: isSelf ? "flex-end" : "flex-start" }}
-                >
-                  {!isSelf && !isSystem && (
-                    <img
-                      src={aiAvatars[m.user?.name] || "/avatars/default.png"}
-                      className="message-avatar"
-                      style={{ width: 24, height: 24 }}
-                    />
-                  )}
-
-                  <div className={msgClass} style={{ color }}>
-                    <strong>
-                      {m.user?.name}
-                      {m.target ? ` → ${m.target}` : ""}：
-                    </strong>{" "}
-                    {m.message}
-                  </div>
-                </div>
-              );
-            })}
-
-            {typing && <div className="typing">{typing}</div>}
-            <div ref={messagesEndRef} />
-          </div>
+          <MessageList
+            messages={messages}
+            name={name}
+            userList={userList}
+            typing={typing}
+            messagesEndRef={messagesEndRef}
+          />
 
           <div className="chat-input">
             <select value={target} onChange={(e) => setTarget(e.target.value)}>
@@ -278,35 +198,21 @@ export default function ChatApp() {
           {userList.map((u) => (
             <div
               key={u.id}
-              className={`user-item ${target === u.name ? "selected" : ""}`}
+              className={`user-item ${u.name === target ? "selected" : ""}`}
               onClick={() => setTarget(u.name)}
             >
-              {aiAvatars[u.name] && (
-                <img src={aiAvatars[u.name]} className="user-avatar" />
-              )}
+              {aiAvatars[u.name] && <img src={aiAvatars[u.name]} className="user-avatar" />}
               {u.name} (Lv.{u.level || 1})
             </div>
           ))}
         </div>
       </div>
 
-      {currentVideo && extractVideoID(currentVideo.url) && (
-        <div className="video-player-float">
-          <YouTube
-            videoId={extractVideoID(currentVideo.url)}
-            onReady={onPlayerReady}
-            opts={{
-              width: "240",
-              height: "135",
-              playerVars: { autoplay: 1, playsinline: 1, muted: 1 },
-            }}
-          />
-          <div className="video-info">
-            🎧 正在播放（由 {currentVideo.user} 點播）
-            <button className="close-btn" onClick={() => setCurrentVideo(null)}>✖</button>
-          </div>
-        </div>
-      )}
+      <VideoPlayer
+        video={currentVideo}
+        extractVideoID={extractVideoID}
+        onClose={() => setCurrentVideo(null)}
+      />
     </div>
   );
 }
