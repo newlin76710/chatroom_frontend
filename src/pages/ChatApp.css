@@ -1,6 +1,7 @@
+/* ===== 全域樣式 ===== */
 body, .chat-container {
   background-color: #121212;
-  color: #fff;
+  color: #eee; /* 統一文字顏色為淺灰白 */
   min-height: 100vh;
   margin: 0;
   padding: 20px;
@@ -33,7 +34,7 @@ body, .chat-container {
   padding: 6px 8px;
   background-color: #1a1a1a;
   border: 1px solid #555;
-  color: #fff;
+  color: #eee;
   border-radius: 4px;
 }
 
@@ -88,6 +89,7 @@ body, .chat-container {
   padding: 6px 10px;
   border-radius: 6px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  color: #eee; /* 統一文字顏色 */
 }
 
 .chat-message.self {
@@ -97,7 +99,6 @@ body, .chat-container {
 
 .chat-message.ai {
   background-color: #3d1a5f;
-  color: #fff;
 }
 
 .chat-message.system {
@@ -143,6 +144,7 @@ body, .chat-container {
   cursor: pointer;
   display: flex;
   align-items: center;
+  color: #eee;
 }
 
 .user-list-content .user-item:hover,
@@ -162,7 +164,7 @@ body, .chat-container {
   padding: 6px 8px;
   background-color: #1a1a1a;
   border: 1px solid #555;
-  color: #fff;
+  color: #eee;
   border-radius: 4px;
 }
 
@@ -213,7 +215,7 @@ body, .chat-container {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: #fff;
+  color: #eee;
   font-size: 0.8rem;
   margin-top: 4px;
 }
@@ -257,10 +259,9 @@ body, .chat-container {
   .chat-message.ai,
   .chat-message.self,
   .chat-message.system {
-    color: inherit; /* 修正手機版變色問題 */
+    color: #eee; /* 文字保持清楚 */
   }
 
-  /* 統一背景避免跳色 */
   body,
   .chat-container,
   .chat-messages,
@@ -283,5 +284,6 @@ body, .chat-container {
 
   .video-info {
     font-size: 0.7rem;
+    color: #eee;
   }
 }
