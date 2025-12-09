@@ -6,15 +6,24 @@ export default function VideoPlayer({ video, extractVideoID, onClose }) {
 
   const onPlayerReady = (event) => {
     playerRef.current = event.target;
-    // 必須先靜音才能 autoplay
-    event.target.mute();
+
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+    if (isTouchDevice) {
+      // 手機：先靜音才能 autoplay
+      event.target.mute();
+    } else {
+      // 桌面：直接播放，不靜音
+      event.target.unMute();
+      event.target.setVolume(100);
+    }
+
     event.target.playVideo();
   };
 
   useEffect(() => {
-    // 只對手機或觸控裝置啟用
+    // 手機解除靜音
     const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-
     if (!isTouchDevice) return;
 
     const handleTouch = () => {
@@ -22,7 +31,6 @@ export default function VideoPlayer({ video, extractVideoID, onClose }) {
         playerRef.current.unMute();
         playerRef.current.setVolume(100);
       }
-      // 移除事件，避免多次觸發
       window.removeEventListener('touchstart', handleTouch);
     };
 
@@ -43,7 +51,11 @@ export default function VideoPlayer({ video, extractVideoID, onClose }) {
         opts={{
           width: "240",
           height: "135",
-          playerVars: { autoplay: 1, playsinline: 1, muted: 1 },
+          playerVars: {
+            autoplay: 1,
+            playsinline: 1,
+            muted: 0, // 讓桌面播放有聲音
+          },
         }}
       />
       <div className="video-info">
