@@ -1,3 +1,4 @@
+// Login.jsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -12,17 +13,13 @@ export default function Login() {
   // 訪客登入
   const guestLogin = async () => {
     try {
-      const oldToken = localStorage.getItem("guestToken");
-      const res = await fetch(`${BACKEND}/auth/guest`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ oldToken }),
-      });
+      const res = await fetch(`${BACKEND}/auth/guest`, { method: "POST" });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "訪客登入失敗");
+      if (!data.guestToken) throw new Error("訪客登入失敗");
 
       localStorage.setItem("guestToken", data.guestToken);
       localStorage.setItem("name", data.name);
+      localStorage.setItem("type", "guest");
 
       navigate("/chat");
     } catch (e) {
@@ -44,6 +41,7 @@ export default function Login() {
 
       localStorage.setItem("token", data.token);
       localStorage.setItem("name", data.name);
+      localStorage.setItem("type", "account");
 
       navigate("/chat");
     } catch (e) {

@@ -4,11 +4,13 @@ import { io } from "socket.io-client";
 import { aiAvatars, aiProfiles } from "./aiConfig";
 import './ChatApp.css';
 
-const socket = io(import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000');
+const BACKEND = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+const socket = io(BACKEND);
 
 export default function ChatApp() {
   const [room, setRoom] = useState("public");
   const [name, setName] = useState("");
+  const [token, setToken] = useState("");      // 帳號 token
   const [guestToken, setGuestToken] = useState("");
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
@@ -41,26 +43,59 @@ export default function ChatApp() {
     };
   }, []);
 
+  // 頁面進入時自動登入（訪客或帳號）
+  useEffect(() => {
+    const storedName = localStorage.getItem("name");
+    const storedToken = localStorage.getItem("token") || localStorage.getItem("guestToken");
+    const type = localStorage.getItem("type");
+
+    if (!storedName) return; // 沒登入就不 join
+
+    setName(storedName);
+    setToken(localStorage.getItem("token") || "");
+    setGuestToken(localStorage.getItem("guestToken") || "");
+
+    socket.emit("joinRoom", {
+      room,
+      user: { name: storedName, type: type || "guest", token: storedToken }
+    });
+    setJoined(true);
+  }, []);
+
   // 訪客登入
   const loginGuest = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}/auth/guest`, {
-        method: "POST"
-      });
+      const res = await fetch(`${BACKEND}/auth/guest`, { method: "POST" });
       const data = await res.json();
       if (!data.guestToken) throw new Error("訪客登入失敗");
-      setGuestToken(data.guestToken);
+
+      localStorage.setItem("guestToken", data.guestToken);
+      localStorage.setItem("name", data.name);
+      localStorage.setItem("type", "guest");
+
       setName(data.name);
-      joinRoom(data.name);
+      setGuestToken(data.guestToken);
+      joinRoom(data.name, "guest", data.guestToken);
     } catch (err) {
-      alert("訪客登入失敗");
+      alert("訪客登入失敗：" + err.message);
       console.error(err);
     }
   };
 
+  // 帳號登入
+  const loginAccount = async (username, token) => {
+    localStorage.setItem("token", token);
+    localStorage.setItem("name", username);
+    localStorage.setItem("type", "account");
+
+    setName(username);
+    setToken(token);
+    joinRoom(username, "account", token);
+  };
+
   // 加入聊天室
-  const joinRoom = (username) => {
-    socket.emit("joinRoom", { room, user: { name: username } });
+  const joinRoom = (username, type = "guest", t = "") => {
+    socket.emit("joinRoom", { room, user: { name: username, type, token: t } });
     setJoined(true);
   };
 
@@ -69,12 +104,12 @@ export default function ChatApp() {
     socket.emit("leaveRoom", { room, user: { name } });
     setJoined(false);
     setMessages(s => [...s, { user: { name: "系統" }, message: `${name} 離開房間` }]);
-    // 清除本地登入資料
-    localStorage.removeItem("guestToken");
-    localStorage.removeItem("name");
-    localStorage.removeItem("authToken");
 
-    // 導回登入頁
+    localStorage.removeItem("guestToken");
+    localStorage.removeItem("token");
+    localStorage.removeItem("name");
+    localStorage.removeItem("type");
+
     window.location.href = "/login";
   };
 
@@ -89,7 +124,7 @@ export default function ChatApp() {
     <div className="chat-container">
       <h2>尋夢園聊天室</h2>
 
-      {/* 訪客登入 / 登出 */}
+      {/* 登入 / 登出 */}
       {!joined ? (
         <div style={{ marginBottom: "1rem" }}>
           <button onClick={loginGuest}>訪客登入</button>
