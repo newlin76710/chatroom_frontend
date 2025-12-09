@@ -1,7 +1,6 @@
-/* ===== 全域樣式 ===== */
 body, .chat-container {
   background-color: #121212;
-  color: #eee;
+  color: #fff;
   min-height: 100vh;
   margin: 0;
   padding: 20px;
@@ -16,7 +15,6 @@ body, .chat-container {
   gap: 15px;
 }
 
-/* ===== 主區域 ===== */
 .chat-main {
   display: flex;
   gap: 10px;
@@ -29,7 +27,6 @@ body, .chat-container {
   flex-direction: column;
 }
 
-/* ===== 訊息區 ===== */
 .chat-messages {
   flex: 1;
   background-color: #1a1a1a;
@@ -55,81 +52,64 @@ body, .chat-container {
   box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 }
 
-/* 系統訊息 */
+.chat-message.self {
+  align-self: flex-end;
+  background-color: #2a2a2a;
+}
+
+.chat-message.ai {
+  background-color: #3d1a5f;
+}
+
 .chat-message.system {
-  align-self: center;
-  background-color: #ff9800;
-  color: #000;
+  background-color: #1a1a1a;
   font-weight: bold;
 }
 
-/* 自己訊息 */
-.chat-message.self {
-  align-self: flex-end;
-  background-color: #3f51b5;
-  color: #fff;
-}
-
-/* AI 訊息 */
-.chat-message.ai {
-  background-color: #8e24aa;
-  color: #fff;
-}
-
-/* 其他使用者訊息 */
 .chat-message.other {
-  background-color: #2a2a2a;
-  color: #eee;
+  background-color: #222;
 }
 
-/* 打字提示 */
-.typing {
-  font-style: italic;
-  color: #aaa;
-  margin: 4px 0;
-}
-
-/* ===== 頭貼固定 ===== */
-.chat-message img,
-.user-item img {
-  width: 24px !important;
-  height: 24px !important;
+/* 頭像 */
+.message-avatar,
+.user-avatar {
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   margin-right: 6px;
   border: 1px solid #555;
   object-fit: cover;
 }
 
-/* ===== 使用者列表 ===== */
+/* 使用者列表 */
 .user-list {
   flex: 0 0 200px;
   display: flex;
   flex-direction: column;
 }
 
-.user-list-content {
-  flex: 1;
+.user-list-content,
+.user-list {
   overflow-y: auto;
   background-color: #1a1a1a;
   border-radius: 4px;
   border: 1px solid #555;
 }
 
-.user-list-content .user-item {
+.user-item {
   padding: 5px 10px;
   border-bottom: 1px solid #555;
   cursor: pointer;
   display: flex;
   align-items: center;
-  color: #eee;
 }
 
-.user-list-content .user-item:hover,
-.user-list-content .user-item.selected {
+.user-item:hover,
+.user-item.selected {
   background-color: #2a2a2a;
 }
 
-/* ===== 輸入區 ===== */
+/* 輸入區 */
 .chat-input {
   display: flex;
   margin-top: 6px;
@@ -141,17 +121,12 @@ body, .chat-container {
   padding: 6px 8px;
   background-color: #1a1a1a;
   border: 1px solid #555;
-  color: #eee;
+  color: #fff;
   border-radius: 4px;
 }
 
-.chat-input select {
-  flex: 0 0 150px;
-}
-
-.chat-input input {
-  flex: 1;
-}
+.chat-input select { flex: 0 0 150px; }
+.chat-input input { flex: 1; }
 
 .chat-input button {
   padding: 6px 10px;
@@ -162,11 +137,11 @@ body, .chat-container {
   cursor: pointer;
 }
 
-.chat-input button:hover {
-  background-color: #7a33ff;
-}
+.chat-input button:hover { background-color: #7a33ff; }
 
-/* ===== 影片播放器 ===== */
+.typing { font-style: italic; color: #aaa; }
+
+/* 影片播放器 */
 .video-player-float {
   position: fixed;
   bottom: 10px;
@@ -179,15 +154,13 @@ body, .chat-container {
   z-index: 999;
 }
 
-.video-player-float iframe {
-  border-radius: 4px;
-}
+.video-player-float iframe { border-radius: 4px; }
 
 .video-info {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: #eee;
+  color: #fff;
   font-size: 0.8rem;
   margin-top: 4px;
 }
@@ -199,62 +172,20 @@ body, .chat-container {
   cursor: pointer;
 }
 
-/* ===== 動畫 ===== */
+/* 動畫 */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* ======= 手機版 ======= */
+/* 手機版 */
 @media (max-width: 480px) {
+  .chat-main { flex-direction: row; height: 420px; }
+  .chat-box { flex: 1; margin-right: 5px; }
+  .user-list { flex: 0 0 90px; }
 
-  .chat-main {
-    flex-direction: row; 
-    height: 420px;
-  }
-
-  .chat-box {
-    flex: 1;
-    margin-right: 5px;
-  }
-
-  .user-list {
-    flex: 0 0 90px;
-  }
-
-  .chat-input select,
-  .chat-input input {
-    font-size: 14px;
-  }
-
-  .chat-message,
-  .chat-message.ai,
-  .chat-message.self,
-  .chat-message.system {
-    color: inherit;
-  }
-
-  body,
-  .chat-container,
-  .chat-messages,
-  .user-list-content {
-    background-color: #121212;
-  }
-
-  .video-player-float {
-    width: 150px;
-    bottom: 10px;
-    right: 10px;
-    padding: 3px;
-  }
-
-  .video-player-float iframe {
-    width: 100%;
-    height: 85px;
-  }
-
-  .video-info {
-    font-size: 0.7rem;
-    color: #eee;
-  }
+  .chat-input select, .chat-input input { font-size: 14px; }
+  .video-player-float { width: 150px; padding: 3px; }
+  .video-player-float iframe { width: 100%; height: 85px; }
+  .video-info { font-size: 0.7rem; }
 }

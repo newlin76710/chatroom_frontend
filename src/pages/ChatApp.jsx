@@ -59,7 +59,6 @@ export default function ChatApp() {
     const storedName = localStorage.getItem("name");
     const storedToken =
       localStorage.getItem("token") || localStorage.getItem("guestToken");
-
     const type = localStorage.getItem("type");
 
     if (!storedName) return;
@@ -165,7 +164,6 @@ export default function ChatApp() {
     <div className="chat-container">
       <h2>尋夢園聊天室</h2>
 
-      {/* 登入區 */}
       {!joined ? (
         <button onClick={loginGuest} className="login-btn">訪客登入</button>
       ) : (
@@ -181,31 +179,37 @@ export default function ChatApp() {
           <div className="chat-messages">
             {messages.map((m, i) => {
               const isSelf = m.user?.name === name;
+              const isSystem = m.user?.name === "系統";
               const isAI = aiAvatars[m.user?.name];
-              const profile =
-                aiProfiles[m.user?.name] || { color: isAI ? "#fff" : "#000" };
+              const profile = aiProfiles[m.user?.name];
+
+              let msgClass = "chat-message";
+              if (isSystem) msgClass += " system";
+              else if (isSelf) msgClass += " self";
+              else if (isAI) msgClass += " ai";
+              else msgClass += " other";
+
+              const color = isSystem
+                ? "#ff9900"
+                : isSelf
+                ? "#fff"
+                : profile?.color || "#eee";
 
               return (
                 <div
                   key={i}
                   className="message-row"
-                  style={{
-                    justifyContent: isSelf ? "flex-end" : "flex-start",
-                  }}
+                  style={{ justifyContent: isSelf ? "flex-end" : "flex-start" }}
                 >
-                  {!isSelf && isAI && (
+                  {!isSelf && !isSystem && (
                     <img
-                      src={aiAvatars[m.user?.name]}
+                      src={aiAvatars[m.user?.name] || "/avatars/default.png"}
                       className="message-avatar"
+                      style={{ width: 24, height: 24 }}
                     />
                   )}
 
-                  <div
-                    className={`chat-message ${
-                      isSelf ? "self" : isAI ? "ai" : ""
-                    }`}
-                    style={{ color: profile.color }}
-                  >
+                  <div className={msgClass} style={{ color }}>
                     <strong>
                       {m.user?.name}
                       {m.target ? ` → ${m.target}` : ""}：
@@ -220,14 +224,11 @@ export default function ChatApp() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* 輸入區 */}
           <div className="chat-input">
             <select value={target} onChange={(e) => setTarget(e.target.value)}>
               <option value="">全部</option>
               {userList.map((u) => (
-                <option key={u.id} value={u.name}>
-                  {u.name}
-                </option>
+                <option key={u.id} value={u.name}>{u.name}</option>
               ))}
             </select>
 
@@ -242,7 +243,6 @@ export default function ChatApp() {
             <button onClick={send}>發送</button>
           </div>
 
-          {/* 🎵 點播功能 */}
           <div className="video-request">
             <input
               type="text"
@@ -251,14 +251,10 @@ export default function ChatApp() {
               onChange={(e) => setVideoUrl(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && playVideo()}
             />
-
-            <button onClick={playVideo} className="play-btn">
-              🎵 點播
-            </button>
+            <button onClick={playVideo} className="play-btn">🎵 點播</button>
           </div>
         </div>
 
-        {/* 使用者列表 */}
         <div className="user-list">
           <strong>在線：{userList.length}</strong>
           {userList.map((u) => (
@@ -276,7 +272,6 @@ export default function ChatApp() {
         </div>
       </div>
 
-      {/* 浮動 YouTube 播放器 */}
       {currentVideo && extractVideoID(currentVideo.url) && (
         <div className="video-player-float">
           <YouTube
@@ -285,19 +280,12 @@ export default function ChatApp() {
             opts={{
               width: "240",
               height: "135",
-              playerVars: {
-                autoplay: 1,
-                playsinline: 1,
-                muted: 1, // 手機必須靜音才能 autoplay
-              },
+              playerVars: { autoplay: 1, playsinline: 1, muted: 1 },
             }}
           />
-
           <div className="video-info">
             🎧 正在播放（由 {currentVideo.user} 點播）
-            <button className="close-btn" onClick={() => setCurrentVideo(null)}>
-              ✖
-            </button>
+            <button className="close-btn" onClick={() => setCurrentVideo(null)}>✖</button>
           </div>
         </div>
       )}
