@@ -21,6 +21,7 @@ export default function ChatApp() {
   const [userList, setUserList] = useState([]);
   const [currentVideo, setCurrentVideo] = useState(null);
   const [videoUrl, setVideoUrl] = useState("");
+  const [chatMode, setChatMode] = useState("public"); // public | private
 
   const messagesEndRef = useRef(null);
 
@@ -32,9 +33,19 @@ export default function ChatApp() {
   /* Socket 事件 */
   useEffect(() => {
     socket.on("message", (m) => {
-      setMessages((s) => [...s, m]);
-      if (m.user && aiAvatars[m.user.name] && m.target) setTyping("");
+      const isPublic = !m.target;
+      const isSender = m.user?.name === name;
+      const isReceiver = m.target === name;
+
+      if (isPublic || isSender || isReceiver) {
+        setMessages((s) => [...s, m]);
+      }
+
+      if (m.user && aiAvatars[m.user.name] && m.target) {
+        setTyping("");
+      }
     });
+
     socket.on("systemMessage", (m) =>
       setMessages((s) => [...s, { user: { name: "系統" }, message: m }])
     );
@@ -113,10 +124,19 @@ export default function ChatApp() {
   };
 
   const send = () => {
-    if (!text || !joined) return;
-    socket.emit("message", { room, message: text, user: { name }, target });
+    if (!text) return;
+    if (chatMode === "private" && !target) return;
+
+    socket.emit("message", {
+      room,
+      message: text,
+      user: { name },
+      target: chatMode === "private" ? target : ""
+    });
+
     setText("");
   };
+
 
   const extractVideoID = (url) => {
     if (!url) return null;
@@ -163,23 +183,62 @@ export default function ChatApp() {
           />
 
           <div className="chat-input">
-            <select value={target} onChange={(e) => setTarget(e.target.value)}>
-              <option value="">全部</option>
-              {userList.map((u) => (
-                <option key={u.id} value={u.name}>{u.name}</option>
-              ))}
-            </select>
+
+            {/* 聊天模式選擇 */}
+            <div className="chat-mode">
+              <label>
+                <input
+                  type="radio"
+                  value="public"
+                  checked={chatMode === "public"}
+                  onChange={() => {
+                    setChatMode("public");
+                    setTarget("");
+                  }}
+                />
+                公開
+              </label>
+
+              <label>
+                <input
+                  type="radio"
+                  value="private"
+                  checked={chatMode === "private"}
+                  onChange={() => setChatMode("private")}
+                />
+                私聊
+              </label>
+            </div>
+
+            {/* 私聊對象 */}
+            {chatMode === "private" && (
+              <select value={target} onChange={(e) => setTarget(e.target.value)}>
+                <option value="">選擇對象</option>
+                {userList
+                  .filter(u => u.name !== name)
+                  .map(u => (
+                    <option key={u.id} value={u.name}>
+                      {u.name}
+                    </option>
+                  ))}
+              </select>
+            )}
 
             <input
               type="text"
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && send()}
-              placeholder="輸入訊息..."
+              placeholder={
+                chatMode === "private"
+                  ? `私聊 ${target || ""}`
+                  : "輸入公開訊息..."
+              }
             />
 
             <button onClick={send}>發送</button>
           </div>
+
 
           <div className="video-request">
             <input
@@ -195,17 +254,26 @@ export default function ChatApp() {
 
         <div className="user-list">
           <strong>在線：{userList.length}</strong>
-          {userList.map((u) => (
-            <div
-              key={u.id}
-              className={`user-item ${u.name === target ? "selected" : ""}`}
-              onClick={() => setTarget(u.name)}
-            >
-              {aiAvatars[u.name] && <img src={aiAvatars[u.name]} className="user-avatar" />}
-              {u.name} (Lv.{u.level || 1})
-            </div>
-          ))}
+
+          {userList
+            .filter(u => u.name !== name)   // ⬅️ 這一行就是你問的那段
+            .map((u) => (
+              <div
+                key={u.id}
+                className={`user-item ${u.name === target ? "selected" : ""}`}
+                onClick={() => {
+                  setChatMode("private");
+                  setTarget(u.name);
+                }}
+              >
+                {aiAvatars[u.name] && (
+                  <img src={aiAvatars[u.name]} className="user-avatar" />
+                )}
+                {u.name} (Lv.{u.level || 1})
+              </div>
+            ))}
         </div>
+
       </div>
 
       <VideoPlayer
