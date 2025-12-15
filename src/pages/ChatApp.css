@@ -268,6 +268,18 @@ body, .chat-container {
   cursor: pointer;
 }
 
+.chat-input select, .chat-input input {
+  padding: 6px 8px;
+  font-size: 14px;
+  background-color: #1a1a1a;
+  border: 1px solid #555;
+  color: #fff;
+  border-radius: 4px;
+}
+
+.chat-input select.chat-target-select { width: 120px; }
+.chat-input button { padding: 6px 12px; font-size: 14px; }
+
 /* =========================
    動畫
 ========================= */

@@ -22,30 +22,14 @@ export default function ChatApp() {
   const [currentVideo, setCurrentVideo] = useState(null);
   const [videoUrl, setVideoUrl] = useState("");
   const [chatMode, setChatMode] = useState("public"); // public | private
-
   const messagesEndRef = useRef(null);
 
-  /* 自動捲到底部 */
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  /* Socket 事件 */
   useEffect(() => {
-    socket.on("message", (m) => {
-      const isPublic = !m.target;
-      const isSender = m.user?.name === name;
-      const isReceiver = m.target === name;
-
-      if (isPublic || isSender || isReceiver) {
-        setMessages((s) => [...s, m]);
-      }
-
-      if (m.user && aiAvatars[m.user.name] && m.target) {
-        setTyping("");
-      }
-    });
-
+    socket.on("message", (m) => setMessages((s) => [...s, m]));
     socket.on("systemMessage", (m) =>
       setMessages((s) => [...s, { user: { name: "系統" }, message: m }])
     );
@@ -60,7 +44,6 @@ export default function ChatApp() {
     };
   }, []);
 
-  /* 自動登入 */
   useEffect(() => {
     const storedName = localStorage.getItem("name");
     const storedToken = localStorage.getItem("token") || localStorage.getItem("guestToken");
@@ -68,7 +51,7 @@ export default function ChatApp() {
     if (!storedName) return;
 
     setName(storedName);
-    setToken(localStorage.getItem("token") || "");
+    setToken(storedToken || "");
     setGuestToken(localStorage.getItem("guestToken") || "");
 
     socket.emit("joinRoom", {
@@ -79,33 +62,14 @@ export default function ChatApp() {
   }, []);
 
   const loginGuest = async () => {
-    try {
-      const res = await fetch(`${BACKEND}/auth/guest`, { method: "POST" });
-      const data = await res.json();
-      if (!data.guestToken) throw new Error("訪客登入失敗");
-
-      localStorage.setItem("guestToken", data.guestToken);
-      localStorage.setItem("name", data.name);
-      localStorage.setItem("type", "guest");
-
-      setName(data.name);
-      setGuestToken(data.guestToken);
-
-      joinRoom(data.name, "guest", data.guestToken);
-    } catch (err) {
-      alert("訪客登入失敗: " + err.message);
-    }
-  };
-
-  const loginAccount = (username, token) => {
-    localStorage.setItem("token", token);
-    localStorage.setItem("name", username);
-    localStorage.setItem("type", "account");
-
-    setName(username);
-    setToken(token);
-
-    joinRoom(username, "account", token);
+    const res = await fetch(`${BACKEND}/auth/guest`, { method: "POST" });
+    const data = await res.json();
+    localStorage.setItem("guestToken", data.guestToken);
+    localStorage.setItem("name", data.name);
+    localStorage.setItem("type", "guest");
+    setName(data.name);
+    setGuestToken(data.guestToken);
+    joinRoom(data.name, "guest", data.guestToken);
   };
 
   const joinRoom = (username, type = "guest", t = "") => {
@@ -131,12 +95,11 @@ export default function ChatApp() {
       room,
       message: text,
       user: { name },
-      target: chatMode === "private" ? target : ""
+      target: chatMode === "private" ? target : "",
+      mode: chatMode
     });
-
     setText("");
   };
-
 
   const extractVideoID = (url) => {
     if (!url) return null;
@@ -147,15 +110,8 @@ export default function ChatApp() {
   const playVideo = () => {
     if (!videoUrl.trim()) return;
     const videoId = extractVideoID(videoUrl.trim());
-    if (!videoId) {
-      alert("無法解析此 YouTube 連結，請確認格式是否正確。");
-      return;
-    }
-    socket.emit("playVideo", {
-      room,
-      url: `https://www.youtube.com/watch?v=${videoId}`,
-      user: name,
-    });
+    if (!videoId) return alert("無法解析此 YouTube 連結");
+    socket.emit("playVideo", { room, url: `https://www.youtube.com/watch?v=${videoId}`, user: name });
     setVideoUrl("");
   };
 
@@ -174,122 +130,52 @@ export default function ChatApp() {
 
       <div className="chat-main">
         <div className="chat-box">
-          <MessageList
-            messages={messages}
-            name={name}
-            userList={userList}
-            typing={typing}
-            messagesEndRef={messagesEndRef}
-          />
+          <MessageList messages={messages} name={name} typing={typing} messagesEndRef={messagesEndRef} />
 
           <div className="chat-input">
-            {/* 聊天模式選擇 */}
             <div className="chat-mode">
               <label>
-                <input
-                  type="radio"
-                  value="public"
-                  checked={chatMode === "public"}
-                  onChange={() => {
-                    setChatMode("public");
-                    setTarget("");
-                  }}
-                />
-                公開
+                <input type="radio" value="public" checked={chatMode==="public"} onChange={() => { setChatMode("public"); setTarget(""); }} />公開
               </label>
-
               <label>
-                <input
-                  type="radio"
-                  value="private"
-                  checked={chatMode === "private"}
-                  onChange={() => {
-                    setChatMode("private");
-                    if (userList.length > 0) {
-                      // 私聊模式預設選擇第一個非自己使用者
-                      const firstTarget = userList.find(u => u.name !== name)?.name || "";
-                      setTarget(firstTarget);
-                    }
-                  }}
-                />
-                私聊
+                <input type="radio" value="private" checked={chatMode==="private"} onChange={() => setChatMode("private")} />私聊
               </label>
             </div>
 
-            {/* 私聊對象 */}
             {chatMode === "private" && (
-              <select
-                value={target}
-                onChange={(e) => setTarget(e.target.value)}
-                className="chat-target-select"
-              >
-                {userList
-                  .filter(u => u.name !== name)
-                  .map(u => (
-                    <option key={u.id} value={u.name}>
-                      {u.name}
-                    </option>
-                  ))}
+              <select value={target} onChange={(e)=>setTarget(e.target.value)} className="chat-target-select">
+                <option value="">選擇對象</option>
+                {userList.filter(u => u.name !== name).map(u => (
+                  <option key={u.id} value={u.name}>{u.name}</option>
+                ))}
               </select>
             )}
 
-            {/* 訊息輸入框 */}
-            <input
-              type="text"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && send()}
-              placeholder={chatMode === "private" ? `私聊 ${target || ""}` : "輸入公開訊息..."}
-              className="chat-text-input"
-            />
-
-            {/* 發送按鈕 */}
-            <button onClick={send} className="chat-send-btn">發送</button>
+            <input type="text" value={text} onChange={(e)=>setText(e.target.value)}
+                   onKeyDown={(e)=>e.key==="Enter" && send()}
+                   placeholder={chatMode==="private" ? `私聊 ${target || ""}` : "輸入公開訊息..."} />
+            <button onClick={send}>發送</button>
           </div>
 
-
-
           <div className="video-request">
-            <input
-              type="text"
-              placeholder="輸入 YouTube 連結"
-              value={videoUrl}
-              onChange={(e) => setVideoUrl(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && playVideo()}
-            />
+            <input type="text" placeholder="輸入 YouTube 連結" value={videoUrl} onChange={e=>setVideoUrl(e.target.value)} onKeyDown={e=>e.key==="Enter" && playVideo()} />
             <button onClick={playVideo} className="play-btn">🎵 點播</button>
           </div>
         </div>
 
         <div className="user-list">
           <strong>在線：{userList.length}</strong>
-
-          {userList
-            .filter(u => u.name !== name)   // ⬅️ 這一行就是你問的那段
-            .map((u) => (
-              <div
-                key={u.id}
-                className={`user-item ${u.name === target ? "selected" : ""}`}
-                onClick={() => {
-                  setChatMode("private");
-                  setTarget(u.name);
-                }}
-              >
-                {aiAvatars[u.name] && (
-                  <img src={aiAvatars[u.name]} className="user-avatar" />
-                )}
-                {u.name} (Lv.{u.level || 1})
-              </div>
-            ))}
+          {userList.map(u => (
+            <div key={u.id} className={`user-item ${u.name===target?"selected":""}`}
+                 onClick={() => { setChatMode("private"); setTarget(u.name); }}>
+              {aiAvatars[u.name] && <img src={aiAvatars[u.name]} className="user-avatar" />}
+              {u.name} (Lv.{u.level || 1})
+            </div>
+          ))}
         </div>
-
       </div>
 
-      <VideoPlayer
-        video={currentVideo}
-        extractVideoID={extractVideoID}
-        onClose={() => setCurrentVideo(null)}
-      />
+      <VideoPlayer video={currentVideo} extractVideoID={extractVideoID} onClose={()=>setCurrentVideo(null)} />
     </div>
   );
 }
