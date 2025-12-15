@@ -183,7 +183,6 @@ export default function ChatApp() {
           />
 
           <div className="chat-input">
-
             {/* 聊天模式選擇 */}
             <div className="chat-mode">
               <label>
@@ -204,7 +203,14 @@ export default function ChatApp() {
                   type="radio"
                   value="private"
                   checked={chatMode === "private"}
-                  onChange={() => setChatMode("private")}
+                  onChange={() => {
+                    setChatMode("private");
+                    if (userList.length > 0) {
+                      // 私聊模式預設選擇第一個非自己使用者
+                      const firstTarget = userList.find(u => u.name !== name)?.name || "";
+                      setTarget(firstTarget);
+                    }
+                  }}
                 />
                 私聊
               </label>
@@ -212,8 +218,11 @@ export default function ChatApp() {
 
             {/* 私聊對象 */}
             {chatMode === "private" && (
-              <select value={target} onChange={(e) => setTarget(e.target.value)}>
-                <option value="">選擇對象</option>
+              <select
+                value={target}
+                onChange={(e) => setTarget(e.target.value)}
+                className="chat-target-select"
+              >
                 {userList
                   .filter(u => u.name !== name)
                   .map(u => (
@@ -224,20 +233,20 @@ export default function ChatApp() {
               </select>
             )}
 
+            {/* 訊息輸入框 */}
             <input
               type="text"
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && send()}
-              placeholder={
-                chatMode === "private"
-                  ? `私聊 ${target || ""}`
-                  : "輸入公開訊息..."
-              }
+              placeholder={chatMode === "private" ? `私聊 ${target || ""}` : "輸入公開訊息..."}
+              className="chat-text-input"
             />
 
-            <button onClick={send}>發送</button>
+            {/* 發送按鈕 */}
+            <button onClick={send} className="chat-send-btn">發送</button>
           </div>
+
 
 
           <div className="video-request">
