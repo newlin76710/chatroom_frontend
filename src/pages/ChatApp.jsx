@@ -43,6 +43,7 @@ export default function ChatApp() {
     );
     socket.on("updateUsers", (list) => setUserList(list));
     socket.on("videoUpdate", (video) => setCurrentVideo(video));
+
     socket.on("playSong", ({ singer, songUrl }) => {
       setCurrentSong({ singer, songUrl });
       setSongResult(null);
@@ -58,6 +59,8 @@ export default function ChatApp() {
       socket.off("systemMessage");
       socket.off("updateUsers");
       socket.off("videoUpdate");
+      socket.off("playSong");
+      socket.off("songResult");
     };
   }, []);
 
@@ -134,6 +137,28 @@ export default function ChatApp() {
     setVideoUrl("");
   };
 
+  // 🔥 上傳歌曲並廣播
+  const uploadSong = async (blob) => {
+    const arrayBuffer = await blob.arrayBuffer();
+    const base64 = btoa(
+      new Uint8Array(arrayBuffer)
+        .reduce((data, byte) => data + String.fromCharCode(byte), "")
+    );
+
+    const res = await fetch(`${BACKEND}/song/upload`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ audioBase64: base64, singer: name })
+    });
+    const data = await res.json();
+
+    socket.emit("startSong", {
+      room,
+      singer: name,
+      songUrl: `${BACKEND}${data.url}`
+    });
+  };
+
   return (
     <div className="chat-container">
       <h2>尋夢園男歡女愛聊天室</h2>
@@ -206,16 +231,13 @@ export default function ChatApp() {
           ))}
         </div>
       </div>
-      <SongPanel socket={socket} room={room} name={name} />
+
+      {/* 🎤 歌唱區 */}
+      <SongPanel socket={socket} room={room} name={name} uploadSong={uploadSong} />
+
+      {/* 🎵 播放歌曲與評分 */}
       {currentSong && (
-        <>
-          <audio src={currentSong.songUrl} controls autoPlay />
-          <SongRating
-            socket={socket}
-            room={room}
-            singer={currentSong.singer}
-          />
-        </>
+        <SongRating socket={socket} room={room} singer={currentSong.singer} songUrl={currentSong.songUrl} />
       )}
 
       {songResult && (
@@ -225,6 +247,7 @@ export default function ChatApp() {
           （{songResult.count} 人評分）
         </div>
       )}
+
       <VideoPlayer video={currentVideo} extractVideoID={extractVideoID} onClose={() => setCurrentVideo(null)} />
     </div>
   );
