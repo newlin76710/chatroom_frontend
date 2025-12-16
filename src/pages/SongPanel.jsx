@@ -2,24 +2,25 @@ import { useEffect, useRef, useState } from "react";
 
 export default function SongPanel({ socket, room, name, uploadSong }) {
   const mediaRecorderRef = useRef(null);
-  const audioChunks = useRef([]);
+  const audioChunksRef = useRef([]);
   const [recording, setRecording] = useState(false);
-  const [playingSong, setPlayingSong] = useState(null);
+  const [queue, setQueue] = useState([]);
+  const [currentSong, setCurrentSong] = useState(null);
   const [score, setScore] = useState(0);
   const audioRef = useRef(null);
+  const scoreTimeoutRef = useRef(null);
 
   // 🎤 開始錄音
   const startRecord = async () => {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     const recorder = new MediaRecorder(stream);
     mediaRecorderRef.current = recorder;
-    audioChunks.current = [];
+    audioChunksRef.current = [];
 
-    recorder.ondataavailable = e => audioChunks.current.push(e.data);
+    recorder.ondataavailable = e => audioChunksRef.current.push(e.data);
 
     recorder.onstop = async () => {
-      // 🔥 錄音完成 → 上傳 → 廣播
-      const blob = new Blob(audioChunks.current, { type: "audio/webm" });
+      const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
       if (uploadSong) {
         await uploadSong(blob);
       }
@@ -35,26 +36,49 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
     setRecording(false);
   };
 
-  // 🔊 播放房間內的歌
+  // 🔊 接收播放歌曲事件
   useEffect(() => {
-    socket.on("playSong", ({ singer, songUrl }) => {
-      setPlayingSong({ singer, songUrl });
+    socket.on("playSong", (song) => {
+      if (!song) return;
+      setQueue(prev => [...prev, song]);
+      if (!currentSong) playNext();
     });
 
-    socket.on("songResult", ({ singer, avg, count }) => {
-      alert(`🎤 ${singer} 平均分數：${avg}（${count}人評分）`);
-      setPlayingSong(null);
-      setScore(0);
+    socket.on("songResult", () => {
+      // 評分完成 → 播下一首
+      clearTimeout(scoreTimeoutRef.current);
+      playNext();
     });
 
     return () => {
       socket.off("playSong");
       socket.off("songResult");
+      clearTimeout(scoreTimeoutRef.current);
     };
-  }, [socket]);
+  }, [currentSong]);
+
+  const playNext = () => {
+    setScore(0);
+    setCurrentSong(prev => {
+      if (!queue.length) return null;
+      const [next, ...rest] = queue;
+      setQueue(rest);
+
+      // 開啟自動評分結算 5 秒
+      scoreTimeoutRef.current = setTimeout(() => {
+        if (next) {
+          socket.emit("scoreSong", { room, score: 0 });
+        }
+      }, 5000);
+
+      return next;
+    });
+  };
 
   // ⭐ 送出評分
   const sendScore = () => {
+    if (!currentSong) return;
+    clearTimeout(scoreTimeoutRef.current); // 已送出則取消自動結算
     socket.emit("scoreSong", { room, score });
   };
 
@@ -68,10 +92,10 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
         <button onClick={stopRecord}>結束錄音</button>
       )}
 
-      {playingSong && (
+      {currentSong && (
         <div className="song-playing">
-          <p>🎶 正在播放：{playingSong.singer}</p>
-          <audio ref={audioRef} src={playingSong.songUrl} controls autoPlay />
+          <p>🎶 正在播放：{currentSong.singer}</p>
+          <audio ref={audioRef} src={currentSong.songUrl} controls autoPlay />
 
           <div className="score">
             <select value={score} onChange={e => setScore(+e.target.value)}>
