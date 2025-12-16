@@ -8,7 +8,8 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
   const [recording, setRecording] = useState(false);
   const [playingSong, setPlayingSong] = useState(null);
   const [score, setScore] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(0); // 評分倒數
+  const [timeLeft, setTimeLeft] = useState(0);
+  const timerRef = useRef(null);
 
   // 🎤 開始錄音
   const startRecord = async () => {
@@ -21,7 +22,7 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
 
     recorder.onstop = async () => {
       const blob = new Blob(audioChunks.current, { type: "audio/webm" });
-      if (uploadSong) await uploadSong(blob); // 上傳並廣播
+      if (uploadSong) await uploadSong(blob);
     };
 
     recorder.start();
@@ -34,17 +35,36 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
     setRecording(false);
   };
 
-  // 🔊 播放房間內的歌 & 評分倒數
+  // ⭐ 送出評分
+  const sendScore = () => {
+    socket.emit("scoreSong", { room, score });
+    setScore(0);
+    setTimeLeft(0);
+  };
+
+  // 倒數計時
   useEffect(() => {
-    socket.on("playSong", ({ singer, songUrl }) => {
-      if (!singer || !songUrl) {
+    if (timeLeft <= 0) return;
+    timerRef.current = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
+    return () => clearTimeout(timerRef.current);
+  }, [timeLeft]);
+
+  const handleSongEnded = () => {
+    // 歌播完才開始 90 秒倒數
+    setTimeLeft(90);
+  };
+
+  // 🔊 接收後端歌曲播放
+  useEffect(() => {
+    socket.on("playSong", (song) => {
+      if (!song) {
         setPlayingSong(null);
         setTimeLeft(0);
         return;
       }
-      setPlayingSong({ singer, songUrl });
+      setPlayingSong({ singer: song.singer, songUrl: song.url });
       setScore(0);
-      setTimeLeft(0); // 評分倒數等歌曲播完再開始
+      setTimeLeft(0); // 評分倒數等播放完再開始
     });
 
     socket.on("songResult", ({ singer, avg, count }) => {
@@ -60,33 +80,12 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
     };
   }, [socket]);
 
-  // ⭐ 評分倒數計時
+  // 倒數結束自動送分
   useEffect(() => {
-    if (timeLeft <= 0) return;
-    const interval = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          sendScore(); // 倒數結束自動送出
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
+    if (timeLeft === 0 && playingSong && score > 0) {
+      sendScore();
+    }
   }, [timeLeft]);
-
-  // ⭐ 送出評分
-  const sendScore = () => {
-    if (!playingSong) return;
-    socket.emit("scoreSong", { room, score });
-    setTimeLeft(0);
-  };
-
-  // ⭐ 歌曲播放完開始90秒倒數
-  const handleSongEnded = () => {
-    setTimeLeft(90);
-  };
 
   return (
     <div className="song-panel">
@@ -102,6 +101,7 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
         <div className="song-playing">
           <p>🎶 正在播放：{playingSong.singer}</p>
           <audio
+            key={playingSong.songUrl}
             ref={audioRef}
             src={playingSong.songUrl}
             controls
@@ -109,19 +109,21 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
             onEnded={handleSongEnded}
           />
 
-          {timeLeft > 0 && <p>⏱ 評分剩餘時間：{timeLeft}s</p>}
-
           {timeLeft > 0 && (
-            <div className="score">
-              <select value={score} onChange={e => setScore(+e.target.value)}>
-                <option value="0">評分</option>
-                {[1, 2, 3, 4, 5].map(n => (
-                  <option key={n} value={n}>{n} ⭐</option>
-                ))}
-              </select>
-              <button onClick={sendScore}>送出</button>
+            <div>
+              ⏱️ 評分倒數：{timeLeft} 秒
             </div>
           )}
+
+          <div className="score">
+            <select value={score} onChange={e => setScore(+e.target.value)}>
+              <option value="0">評分</option>
+              {[1, 2, 3, 4, 5].map(n => (
+                <option key={n} value={n}>{n} ⭐</option>
+              ))}
+            </select>
+            <button onClick={sendScore}>送出</button>
+          </div>
         </div>
       )}
     </div>
