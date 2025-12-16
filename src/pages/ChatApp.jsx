@@ -2,7 +2,10 @@ import { useState, useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 import { aiAvatars, aiProfiles } from "./aiConfig";
 import MessageList from "./MessageList";
+import SongPanel from "./SongPanel";
+import SongRating from "./SongRating";
 import VideoPlayer from "./VideoPlayer";
+
 import './ChatApp.css';
 
 const BACKEND = import.meta.env.VITE_BACKEND_URL || 'http://localhost:10000';
@@ -22,6 +25,9 @@ export default function ChatApp() {
   const [currentVideo, setCurrentVideo] = useState(null);
   const [videoUrl, setVideoUrl] = useState("");
   const [chatMode, setChatMode] = useState("public"); // public | publicTarget | private
+  const [currentSong, setCurrentSong] = useState(null);
+  const [songResult, setSongResult] = useState(null);
+
   const messagesEndRef = useRef(null);
 
   // 自動滾到底
@@ -37,6 +43,15 @@ export default function ChatApp() {
     );
     socket.on("updateUsers", (list) => setUserList(list));
     socket.on("videoUpdate", (video) => setCurrentVideo(video));
+    socket.on("playSong", ({ singer, songUrl }) => {
+      setCurrentSong({ singer, songUrl });
+      setSongResult(null);
+    });
+
+    socket.on("songResult", (result) => {
+      setSongResult(result);
+      setCurrentSong(null);
+    });
 
     return () => {
       socket.off("message");
@@ -191,7 +206,25 @@ export default function ChatApp() {
           ))}
         </div>
       </div>
+      <SongPanel socket={socket} room={room} name={name} />
+      {currentSong && (
+        <>
+          <audio src={currentSong.songUrl} controls autoPlay />
+          <SongRating
+            socket={socket}
+            room={room}
+            singer={currentSong.singer}
+          />
+        </>
+      )}
 
+      {songResult && (
+        <div className="song-result">
+          🎉 <strong>{songResult.singer}</strong>
+          平均分：⭐ {songResult.avg}
+          （{songResult.count} 人評分）
+        </div>
+      )}
       <VideoPlayer video={currentVideo} extractVideoID={extractVideoID} onClose={() => setCurrentVideo(null)} />
     </div>
   );

@@ -183,6 +183,80 @@ body, .chat-container {
   padding: 0 3px;
   border-radius: 2px;
 }
+.song-panel {
+  margin-top: 10px;
+  padding: 8px;
+  border-top: 1px solid #333;
+}
+
+.song-panel button {
+  padding: 6px 10px;
+  margin-right: 6px;
+}
+
+.song-playing {
+  margin-top: 8px;
+}
+
+.song-playing audio {
+  width: 100%;
+}
+
+.score {
+  margin-top: 6px;
+}
+.song-rating {
+  margin-top: 8px;
+  padding: 10px;
+  border-radius: 10px;
+  background: #1f1f1f;
+  text-align: center;
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.15);
+}
+.song-result {
+  margin-top: 10px;
+  padding: 8px;
+  background: #2a2a2a;
+  border-radius: 8px;
+  text-align: center;
+  color: #ffd700;
+  font-size: 14px;
+}
+.rating-title {
+  color: #ffd700;
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+
+.stars {
+  font-size: 26px;
+}
+
+.star {
+  cursor: pointer;
+  color: #555;
+  margin: 0 4px;
+  transition: transform 0.15s, color 0.15s;
+}
+
+.star:hover {
+  transform: scale(1.2);
+  color: #ffd700;
+}
+
+.star.active {
+  color: #ffd700;
+}
+
+.star.locked {
+  cursor: default;
+}
+
+.rated {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #aaa;
+}
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
