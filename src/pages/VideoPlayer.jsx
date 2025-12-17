@@ -8,11 +8,9 @@ export default function VideoPlayer({ video, extractVideoID, onClose }) {
     playerRef.current = event.target;
 
     const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-
-    if (isTouchDevice) {
-      event.target.mute(); // 手機先靜音
-    } else {
-      event.target.unMute(); // 桌面直接播放
+    if (isTouchDevice) event.target.mute();
+    else {
+      event.target.unMute();
       event.target.setVolume(100);
     }
 
@@ -30,12 +28,8 @@ export default function VideoPlayer({ video, extractVideoID, onClose }) {
       }
       window.removeEventListener('touchstart', handleTouch);
     };
-
     window.addEventListener('touchstart', handleTouch);
-
-    return () => {
-      window.removeEventListener('touchstart', handleTouch);
-    };
+    return () => window.removeEventListener('touchstart', handleTouch);
   }, []);
 
   if (!video || !extractVideoID(video.url)) return null;
@@ -48,11 +42,15 @@ export default function VideoPlayer({ video, extractVideoID, onClose }) {
         opts={{
           width: "240",
           height: "135",
-          playerVars: { autoplay: 1, playsinline: 1, muted: 0 },
+          playerVars: {
+            autoplay: 1,
+            playsinline: 1,
+            muted: 0,
+          },
         }}
       />
       <div className="video-info">
-        🎧 正在播放（由 {video.user} 點播）
+        🎧 正在播放（由 {video.user?.name || "未知"} 點播）
         <button className="close-btn" onClick={onClose}>✖</button>
       </div>
     </div>
