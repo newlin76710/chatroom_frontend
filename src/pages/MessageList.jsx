@@ -37,18 +37,17 @@ export default function MessageList({ messages, name, typing, messagesEndRef }) 
                                 <img src={aiAvatars[m.user?.name] || "/avatars/default.png"} className="message-avatar" />
                             )}
                             <div className={msgClass} style={{ color, position: "relative", fontSize: "0.8rem" }}>
-                                <strong style={{ color: (m.mode === "private" ? "#ffd36a" : m.mode === "publicTarget" ? "#ffcc66" : color) }}>
+                                {/* 標籤在箭頭上方 */}
+                                {(m.mode === "private" || m.mode === "publicTarget") && m.target && (
+                                    <div style={{ fontSize: "0.7rem", color: "#ffd36a", marginBottom: "2px", textAlign: isSelf ? "right" : "left" }}>
+                                        {m.mode === "private" ? "私聊" : "公開對象"}
+                                    </div>
+                                )}
+
+                                {/* 名稱 + 箭頭 */}
+                                <strong style={{ color: color }}>
                                     {m.user?.name}{m.target ? ` → ${m.target}` : ""}：
                                 </strong> {m.message}
-                                {(m.mode === "private" || m.mode === "publicTarget") && m.target && (
-                                    <span className="private-tag fade-in" style={{
-                                        fontSize: "0.7rem",
-                                        marginLeft: "6px",
-                                        color: "#ffd36a"
-                                    }}>
-                                        {m.mode === "private" ? "私聊" : "公開對象"}
-                                    </span>
-                                )}
                             </div>
                         </div>
                     );
