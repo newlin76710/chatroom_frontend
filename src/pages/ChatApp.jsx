@@ -124,8 +124,8 @@ export default function ChatApp() {
 
       <div className="chat-main">
         <div className="chat-box">
-          {/*<MessageList messages={messages} name={name} typing={typing} messagesEndRef={messagesEndRef} />
-*/}
+          <MessageList messages={messages} name={name} typing={typing} messagesEndRef={messagesEndRef} />
+
           <div className="chat-input">
             <div className="chat-mode">
               <label><input type="radio" value="public" checked={chatMode === "public"} onChange={() => { setChatMode("public"); setTarget(""); }} /> 公開</label>
@@ -155,21 +155,21 @@ export default function ChatApp() {
         <div className="user-list">
           <strong>在線：{userList.length}</strong>
           {userList.map(u => (
-            <div key={u.id} className={`user-item ${u.name === target ? "selected" : ""}`} onClick={() => { setChatMode("private"); setTarget(u.name); }}>
-              {aiAvatars[u.name] && <img src={aiAvatars[u.name]} className="user-avatar" />}
-              {u.name} (Lv.{u.level || 1})
+            <div key={u?.id} className={`user-item ${u?.name === target ? "selected" : ""}`} onClick={() => { setChatMode("private"); setTarget(u?.name); }}>
+              {aiAvatars[u?.name] && <img src={aiAvatars[u?.name]} className="user-avatar" />}
+              {u?.name} (Lv.{u?.level || 1})
             </div>
           ))}
         </div>
       </div>
-{/*
+
       <SongPanel socket={socket} room={room} name={name} uploadSong={async (blob) => {
         const arrayBuffer = await blob.arrayBuffer();
         const base64 = btoa(new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ""));
         const res = await fetch(`${BACKEND}/song/upload`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ audioBase64: base64, singer: name }) });
         const data = await res.json();
         socket.emit("startSong", { room, singer: name, songUrl: `${BACKEND}${data.url}` });
-      }} />*/}
+      }} />
 
       <VideoPlayer video={currentVideo} extractVideoID={extractVideoID} onClose={() => setCurrentVideo(null)} />
     </div>
