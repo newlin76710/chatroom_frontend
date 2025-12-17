@@ -40,10 +40,11 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
 
     // ⭐ 送出評分
     const sendScore = (n) => {
-        if (scoreSent) return; // 已送分就不能再送
-        socket.emit("scoreSong", { room, score: n });
+        if (scoreSent) return;
         setScore(n);
+        socket.emit("scoreSong", { room, score: n });
         setScoreSent(true);
+        setHoverScore(0); // 送分後清掉 hover
         setTimeLeft(0);
     };
 

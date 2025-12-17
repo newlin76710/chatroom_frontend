@@ -190,13 +190,6 @@ body {
   margin-top: 6px;
 }
 
-.star {
-  cursor: pointer;
-  font-size: 26px;
-  color: #555;
-  transition: transform 0.15s, color 0.15s;
-}
-
 .star.active,
 .star:hover,
 .star:hover ~ .star { 
@@ -207,15 +200,6 @@ body {
   transform: scale(1.2);
 }
 
-.star.disabled {
-  cursor: default;
-  color: #999;
-}
-
-.star.disabled:hover {
-  transform: none;
-  color: #999;
-}
 .score-timer {
   margin-bottom: 4px;
   font-size: 14px;
@@ -224,6 +208,26 @@ body {
 
 .score-timer span {
   transition: color 0.3s;
+}
+.star {
+  cursor: pointer;
+  font-size: 26px;
+  color: #555;
+  margin: 0 4px;
+  transition: transform 0.15s, color 0.15s;
+}
+
+.star.active {
+  color: #ffd700;
+}
+
+.star.disabled {
+  cursor: default;
+}
+
+.star.disabled:hover {
+  color: #ffd700; /* 送分後 hover 不變色 */
+  transform: none; /* 送分後不縮放 */
 }
 
 
