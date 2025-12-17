@@ -9,6 +9,7 @@ import "./ChatApp.css";
 const BACKEND = import.meta.env.VITE_BACKEND_URL || "http://localhost:10000";
 const socket = io(BACKEND);
 
+/* ===== 永久防呆：任何值轉成可 render 的字串 ===== */
 const safeText = (v) => {
   if (v === null || v === undefined) return "";
   if (typeof v === "string") return v;
@@ -36,19 +37,12 @@ export default function ChatApp() {
   const [chatMode, setChatMode] = useState("public");
   const messagesEndRef = useRef(null);
 
-  const extractVideoID = (url) => {
-    if (!url) return null;
-    const match =
-      url.match(/v=([\w-]{11})/) ||
-      url.match(/youtu\.be\/([\w-]{11})/) ||
-      url.match(/shorts\/([\w-]{11})/);
-    return match ? match[1] : null;
-  };
-
+  /* ===== 自動捲動 ===== */
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  /* ===== Socket 事件 ===== */
   useEffect(() => {
     socket.on("message", (m) => {
       if (!m) return;
@@ -82,9 +76,7 @@ export default function ChatApp() {
       );
     });
 
-    socket.on("videoUpdate", (v) => {
-      setCurrentVideo(v || null);
-    });
+    socket.on("videoUpdate", (v) => setCurrentVideo(v || null));
 
     return () => {
       socket.off("message");
@@ -94,30 +86,33 @@ export default function ChatApp() {
     };
   }, []);
 
+  /* ===== 自動登入 ===== */
   useEffect(() => {
     const storedName = localStorage.getItem("name");
     const token = localStorage.getItem("token") || localStorage.getItem("guestToken");
     const type = localStorage.getItem("type") || "guest";
     if (!storedName) return;
 
-    setName(storedName);
-    socket.emit("joinRoom", {
-      room,
-      user: { name: storedName, type, token },
-    });
+    const safeName = safeText(storedName);
+    setName(safeName);
+    socket.emit("joinRoom", { room, user: { name: safeName, type, token } });
     setJoined(true);
   }, [room]);
 
+  /* ===== 訪客登入 ===== */
   const loginGuest = async () => {
     const res = await fetch(`${BACKEND}/auth/guest`, { method: "POST" });
     const data = await res.json();
+    const safeName = safeText(data.name);
+
     localStorage.setItem("guestToken", data.guestToken);
-    localStorage.setItem("name", data.name);
+    localStorage.setItem("name", safeName);
     localStorage.setItem("type", "guest");
-    setName(data.name);
+
+    setName(safeName);
     socket.emit("joinRoom", {
       room,
-      user: { name: data.name, type: "guest", token: data.guestToken },
+      user: { name: safeName, type: "guest", token: data.guestToken },
     });
     setJoined(true);
   };
@@ -131,7 +126,7 @@ export default function ChatApp() {
 
   const send = () => {
     if (!text.trim()) return;
-    if ((chatMode !== "public") && !target) return;
+    if (chatMode !== "public" && !target) return;
 
     socket.emit("message", {
       room,
@@ -143,15 +138,32 @@ export default function ChatApp() {
     setText("");
   };
 
+  /* ===== YouTube ===== */
+  const extractVideoID = (url) => {
+    if (!url) return null;
+    const match =
+      url.match(/v=([\w-]{11})/) ||
+      url.match(/youtu\.be\/([\w-]{11})/) ||
+      url.match(/shorts\/([\w-]{11})/);
+    return match ? match[1] : null;
+  };
+
   const playVideo = () => {
     const id = extractVideoID(videoUrl);
     if (!id) return alert("無法解析 YouTube 連結");
-    socket.emit("playVideo", {
-      room,
-      url: `https://www.youtube.com/watch?v=${id}`,
-      user: { name },
-    });
+    socket.emit("playVideo", { room, url: `https://www.youtube.com/watch?v=${id}`, user: { name } });
     setVideoUrl("");
+  };
+
+  /* ===== 上傳錄音 ===== */
+  const uploadSong = async (blob) => {
+    try {
+      const formData = new FormData();
+      formData.append("file", blob, `${name}_song.webm`);
+      await fetch(`${BACKEND}/uploadSong`, { method: "POST", body: formData });
+    } catch (err) {
+      console.error("上傳錄音失敗：", err);
+    }
   };
 
   return (
@@ -202,11 +214,9 @@ export default function ChatApp() {
             {chatMode !== "public" && (
               <select value={target} onChange={(e) => setTarget(e.target.value)}>
                 <option value="">選擇對象</option>
-                {userList
-                  .filter((u) => u.name !== name)
-                  .map((u) => (
-                    <option key={u.id} value={u.name}>{u.name}</option>
-                  ))}
+                {userList.filter(u => u.name !== name).map(u => (
+                  <option key={u.id} value={u.name}>{u.name}</option>
+                ))}
               </select>
             )}
 
@@ -231,32 +241,21 @@ export default function ChatApp() {
 
         <div className="user-list">
           <strong>在線：{userList.length}</strong>
-          {userList.map((u) => (
+          {userList.map(u => (
             <div
               key={u.id}
               className={`user-item ${u.name === target ? "selected" : ""}`}
               onClick={() => { setChatMode("private"); setTarget(u.name); }}
             >
-              {aiAvatars[u.name] && (
-                <img src={aiAvatars[u.name]} alt={u.name} className="user-avatar" />
-              )}
+              {aiAvatars[u.name] && <img src={aiAvatars[u.name]} alt={u.name} className="user-avatar" />}
               {u.name} (Lv.{u.level})
             </div>
           ))}
         </div>
       </div>
 
-      {/* 安全渲染 SongPanel */}
-      {socket && name && (
-        <SongPanel socket={socket} room={room} name={name} />
-      )}
-
-      {/* 安全渲染 VideoPlayer */}
-      <VideoPlayer
-        video={currentVideo}
-        onClose={() => setCurrentVideo(null)}
-        extractVideoID={extractVideoID}
-      />
+      <SongPanel socket={socket} room={room} name={name} uploadSong={uploadSong} />
+      <VideoPlayer video={currentVideo} extractVideoID={extractVideoID} onClose={() => setCurrentVideo(null)} />
     </div>
   );
 }
