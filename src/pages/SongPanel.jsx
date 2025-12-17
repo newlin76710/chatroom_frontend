@@ -1,177 +1,149 @@
-import { useState, useEffect, useRef } from "react";
-import { io } from "socket.io-client";
-import MessageList from "./MessageList";
-import VideoPlayer from "./VideoPlayer";
-import SongPanel from "./SongPanel";
-import { aiAvatars } from "./aiConfig";
+import { useEffect, useRef, useState } from "react";
+import "./SongPanel.css";
 
-import './ChatApp.css';
+export default function SongPanel({ socket, room, name, uploadSong }) {
+  const mediaRecorderRef = useRef(null);
+  const audioChunks = useRef([]);
+  const audioRef = useRef(null);
 
-const BACKEND = import.meta.env.VITE_BACKEND_URL || 'http://localhost:10000';
-const socket = io(BACKEND);
+  const [recording, setRecording] = useState(false);
+  const [playingSong, setPlayingSong] = useState(null);
+  const [score, setScore] = useState(0);
+  const [hoverScore, setHoverScore] = useState(0);
+  const [scoreSent, setScoreSent] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [displayQueue, setDisplayQueue] = useState([]);
+  const [collapsed, setCollapsed] = useState(false);
+  const timerRef = useRef(null);
 
-export default function ChatApp() {
-  const [room] = useState("public");
-  const [name, setName] = useState("");
-  const [token, setToken] = useState("");
-  const [guestToken, setGuestToken] = useState("");
-  const [messages, setMessages] = useState([]);
-  const [text, setText] = useState("");
-  const [joined, setJoined] = useState(false);
-  const [target, setTarget] = useState("");
-  const [typing, setTyping] = useState("");
-  const [userList, setUserList] = useState([]);
-  const [currentVideo, setCurrentVideo] = useState(null);
-  const [videoUrl, setVideoUrl] = useState("");
-  const [chatMode, setChatMode] = useState("public"); 
-  const messagesEndRef = useRef(null);
+  const startRecord = async () => {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const recorder = new MediaRecorder(stream);
+    mediaRecorderRef.current = recorder;
+    audioChunks.current = [];
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  useEffect(() => {
-    socket.on("message", (m) => setMessages(s => [...s, m]));
-    socket.on("systemMessage", (m) => setMessages(s => [...s, { user: { name: "系統" }, message: m }]));
-    socket.on("updateUsers", setUserList);
-    socket.on("videoUpdate", setCurrentVideo);
-    return () => {
-      socket.off("message");
-      socket.off("systemMessage");
-      socket.off("updateUsers");
-      socket.off("videoUpdate");
+    recorder.ondataavailable = (e) => audioChunks.current.push(e.data);
+    recorder.onstop = async () => {
+      const blob = new Blob(audioChunks.current, { type: "audio/webm" });
+      if (uploadSong) await uploadSong(blob);
     };
-  }, []);
+
+    recorder.start();
+    setRecording(true);
+  };
+
+  const stopRecord = () => {
+    mediaRecorderRef.current.stop();
+    setRecording(false);
+  };
+
+  const sendScore = (n) => {
+    if (scoreSent) return;
+    setScore(n);
+    setScoreSent(true);
+    setHoverScore(0);
+    socket.emit("scoreSong", { room, score: n });
+    setTimeLeft(0);
+  };
 
   useEffect(() => {
-    const storedName = localStorage.getItem("name");
-    const storedToken = localStorage.getItem("token") || localStorage.getItem("guestToken");
-    const type = localStorage.getItem("type");
-    if (!storedName) return;
-    setName(storedName);
-    setToken(storedToken || "");
-    setGuestToken(localStorage.getItem("guestToken") || "");
-    socket.emit("joinRoom", { room, user: { name: storedName, type: type || "guest", token: storedToken } });
-    setJoined(true);
-  }, []);
+    if (timeLeft <= 0) return;
+    timerRef.current = setTimeout(() => setTimeLeft((t) => t - 1), 1000);
+    return () => clearTimeout(timerRef.current);
+  }, [timeLeft]);
 
-  const loginGuest = async () => {
-    const res = await fetch(`${BACKEND}/auth/guest`, { method: "POST" });
-    const data = await res.json();
-    localStorage.setItem("guestToken", data.guestToken);
-    localStorage.setItem("name", data.name);
-    localStorage.setItem("type", "guest");
-    setName(data.name);
-    setGuestToken(data.guestToken);
-    joinRoom(data.name, "guest", data.guestToken);
-  };
+  const handleSongEnded = () => setTimeLeft(30);
 
-  const joinRoom = (username, type = "guest", t = "") => {
-    socket.emit("joinRoom", { room, user: { name: username, type, token: t } });
-    setJoined(true);
-  };
-
-  const leaveRoom = () => {
-    socket.emit("leaveRoom", { room, user: { name } });
-    setJoined(false);
-    localStorage.removeItem("guestToken");
-    localStorage.removeItem("token");
-    localStorage.removeItem("name");
-    localStorage.removeItem("type");
-    window.location.href = "/login";
-  };
-
-  const send = () => {
-    if (!text) return;
-    if ((chatMode === "private" || chatMode === "publicTarget") && !target) return;
-
-    socket.emit("message", {
-      room,
-      message: text,
-      user: { name },
-      target: target || "",
-      mode: chatMode
+  useEffect(() => {
+    socket.on("playSong", (song) => {
+      if (!song) {
+        setPlayingSong(null);
+        setScore(0); setHoverScore(0); setScoreSent(false); setTimeLeft(0);
+        return;
+      }
+      setPlayingSong({ singer: song.singer || "未知", songUrl: song.url });
+      setScore(0); setHoverScore(0); setScoreSent(false); setTimeLeft(0);
     });
-    setText("");
-  };
 
-  const extractVideoID = (url) => {
-    if (!url) return null;
-    const match = url.match(/v=([a-zA-Z0-9_-]{11})/) || url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/) || url.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/);
-    return match ? match[1] : null;
-  };
+    socket.on("songResult", ({ singer, avg, count }) => {
+      alert(`🎤 ${singer || "未知"} 平均分數：${avg}（${count}人評分）`);
+      setPlayingSong(null); setScore(0); setHoverScore(0); setScoreSent(false); setTimeLeft(0);
+    });
 
-  const playVideo = () => {
-    if (!videoUrl.trim()) return;
-    const videoId = extractVideoID(videoUrl.trim());
-    if (!videoId) return alert("無法解析此 YouTube 連結");
-    socket.emit("playVideo", { room, url: `https://www.youtube.com/watch?v=${videoId}`, user: { name } });
-    setVideoUrl("");
-  };
+    socket.on("displayQueueUpdate", (queue) => setDisplayQueue(queue || []));
+
+    return () => {
+      socket.off("playSong"); socket.off("songResult"); socket.off("displayQueueUpdate");
+    };
+  }, [socket]);
+
+  useEffect(() => {
+    if (timeLeft === 0 && playingSong && score > 0 && !scoreSent) sendScore(score);
+  }, [timeLeft]);
 
   return (
-    <div className="chat-container">
-      <h2>尋夢園男歡女愛聊天室</h2>
-
-      {!joined ? (
-        <button onClick={loginGuest} className="login-btn">訪客登入</button>
-      ) : (
-        <div className="user-header">
-          <strong>Hi, {name}</strong>
-          <button onClick={leaveRoom}>離開</button>
-        </div>
-      )}
-
-      <div className="chat-main">
-        <div className="chat-box">
-          <MessageList messages={messages} name={name} typing={typing} messagesEndRef={messagesEndRef} />
-
-          <div className="chat-input">
-            <div className="chat-mode">
-              <label><input type="radio" value="public" checked={chatMode === "public"} onChange={() => { setChatMode("public"); setTarget(""); }} /> 公開</label>
-              <label><input type="radio" value="publicTarget" checked={chatMode === "publicTarget"} onChange={() => setChatMode("publicTarget")} /> 公開對象</label>
-              <label><input type="radio" value="private" checked={chatMode === "private"} onChange={() => setChatMode("private")} /> 私聊</label>
-            </div>
-
-            {(chatMode === "private" || chatMode === "publicTarget") && (
-              <select value={target} onChange={e => setTarget(e.target.value)}>
-                <option value="">選擇對象</option>
-                {userList.filter(u => u.name !== name).map(u => (
-                  <option key={u.id} value={u.name}>{u.name}</option>
-                ))}
-              </select>
-            )}
-
-            <input type="text" value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} placeholder={chatMode === "private" ? `私聊 ${target || ""}` : "輸入訊息..."} />
-            <button onClick={send}>發送</button>
-          </div>
-
-          <div className="video-request">
-            <input type="text" placeholder="輸入 YouTube 連結" value={videoUrl} onChange={e => setVideoUrl(e.target.value)} onKeyDown={e => e.key === "Enter" && playVideo()} />
-            <button onClick={playVideo}>🎵 點播</button>
-          </div>
-        </div>
-
-        <div className="user-list">
-          <strong>在線：{userList.length}</strong>
-          {userList.map(u => (
-            <div key={u?.id} className={`user-item ${u?.name === target ? "selected" : ""}`} onClick={() => { setChatMode("private"); setTarget(u?.name); }}>
-              {aiAvatars[u?.name] && <img src={aiAvatars[u?.name]} className="user-avatar" />}
-              {u?.name} (Lv.{u?.level || 1})
-            </div>
-          ))}
-        </div>
+    <div className={`song-panel floating ${collapsed ? "collapsed" : ""}`}>
+      <div className="song-header" onClick={() => setCollapsed(!collapsed)}>
+        <h4>🎤 唱歌區</h4>
+        <button>{collapsed ? "展開" : "收起"}</button>
       </div>
 
-      <SongPanel socket={socket} room={room} name={name} uploadSong={async (blob) => {
-        const arrayBuffer = await blob.arrayBuffer();
-        const base64 = btoa(new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ""));
-        const res = await fetch(`${BACKEND}/song/upload`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ audioBase64: base64, singer: name }) });
-        const data = await res.json();
-        socket.emit("startSong", { room, singer: name, songUrl: `${BACKEND}${data.url}` });
-      }} />
+      {!collapsed && (
+        <>
+          {!recording ? (
+            <button onClick={startRecord}>開始唱歌</button>
+          ) : (
+            <button onClick={stopRecord}>結束錄音</button>
+          )}
 
-      <VideoPlayer video={currentVideo} extractVideoID={extractVideoID} onClose={() => setCurrentVideo(null)} />
+          {displayQueue.length > 0 && (
+            <div className="song-queue">
+              <h5>📋 輪候中</h5>
+              {displayQueue.map((q, i) => (
+                <div key={i} className="queue-item">
+                  {i + 1}. {q.type || q.kind || q.mode || "🎤"} {q.name || q.singer || q.user || "未知"}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {playingSong && (
+            <div className="song-playing">
+              <p>🎶 正在播放：{playingSong.singer}</p>
+              <audio
+                key={playingSong.songUrl}
+                ref={audioRef}
+                src={playingSong.songUrl}
+                controls
+                autoPlay
+                onEnded={handleSongEnded}
+              />
+              {timeLeft > 0 && (
+                <div className="score-timer">
+                  ⏱️ 評分倒數：
+                  <span style={{ color: timeLeft <= 5 ? "#ff4d4f" : "#ffd700", fontWeight: "bold" }}>
+                    {timeLeft} 秒
+                  </span>
+                </div>
+              )}
+              <div className="score-wrapper">
+                <div className="score">
+                  {[1,2,3,4,5].map((n) => (
+                    <span
+                      key={n}
+                      className={`star ${n <= (hoverScore || score) ? "active" : ""} ${scoreSent ? "disabled" : ""}`}
+                      onMouseEnter={() => !scoreSent && setHoverScore(n)}
+                      onMouseLeave={() => !scoreSent && setHoverScore(0)}
+                      onClick={() => !scoreSent && sendScore(n)}
+                    >★</span>
+                  ))}
+                </div>
+                {scoreSent && <span className="score-value">{score} 分</span>}
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
