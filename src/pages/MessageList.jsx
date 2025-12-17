@@ -1,5 +1,5 @@
 import { aiAvatars, aiProfiles } from "./aiConfig";
-import './ChatApp.css';
+import "./ChatApp.css";
 
 export default function MessageList({ messages, name, typing, messagesEndRef }) {
   return (
@@ -7,15 +7,13 @@ export default function MessageList({ messages, name, typing, messagesEndRef }) 
       {messages
         .filter(m => {
           if (m.mode === "private") return m.user?.name === name || m.target === name;
-          if (m.mode === "publicTarget") return true;
           return true;
         })
         .map((m, i) => {
           const isSelf = m.user?.name === name;
           const isSystem = m.user?.name === "系統";
-          const username = m.user?.name || "未知";
-          const isAI = aiAvatars[username];
-          const profile = aiProfiles[username] || {};
+          const isAI = aiAvatars[m.user?.name];
+          const profile = aiProfiles[m.user?.name];
 
           let msgClass = "chat-message fade-in";
           if (isSystem) msgClass += " system";
@@ -25,46 +23,54 @@ export default function MessageList({ messages, name, typing, messagesEndRef }) 
 
           let color = "#eee";
           if (!isSystem && !isSelf) {
-            color = profile.color || "#eee";
+            if (profile?.gender === "male") color = "#006633";
+            else if (profile?.gender === "female") color = "#ff66aa";
+            else color = profile?.color || "#eee";
           } else if (isSelf) color = "#fff";
           else if (isSystem) color = "#ff9900";
 
           return (
-            <div key={i} className="message-row" style={{ justifyContent: isSelf ? "flex-end" : "flex-start" }}>
+            <div
+              key={i}
+              className="message-row"
+              style={{ justifyContent: isSelf ? "flex-end" : "flex-start" }}
+            >
               {!isSelf && !isSystem && (
-                <img src={aiAvatars[username] || "/avatars/default.png"} alt={username} className="message-avatar" />
+                <img
+                  src={aiAvatars[m.user?.name] || "/avatars/default.png"}
+                  className="message-avatar"
+                />
               )}
 
-              <div className={msgClass} style={{ color, position: "relative", fontSize: "0.8rem" }}>
-                
-                {/* 標籤固定在訊息框上方 */}
+              {/* 核心：改成 column 排版 */}
+              <div
+                className="message-column"
+                style={{ alignItems: isSelf ? "flex-end" : "flex-start" }}
+              >
                 {(m.mode === "private" || m.mode === "publicTarget") && m.target && (
-                  <div className="message-tag" style={{
-                    fontSize: "0.7rem",
-                    color: "#ffd36a",
-                    marginBottom: "2px",
-                    textAlign: isSelf ? "right" : "left",
-                    position: "absolute",
-                    top: "-16px",
-                    left: isSelf ? "auto" : "0",
-                    right: isSelf ? "0" : "auto"
-                  }}>
+                  <div className="message-tag">
                     {m.mode === "private" ? "私聊" : "公開對象"}
                   </div>
                 )}
 
-                <strong>
-                  {username}{m.target ? ` → ${m.target}` : ""}：
-                </strong> {m.message}
+                <div className={msgClass} style={{ color }}>
+                  <strong>
+                    {m.user?.name}
+                    {m.target ? ` → ${m.target}` : ""}：
+                  </strong>{" "}
+                  {m.message}
+                </div>
               </div>
             </div>
           );
         })}
+
       {typing && (
-        <div className="typing fade-in" style={{ fontSize: "0.8rem", color: "#aaa", marginTop: "4px" }}>
+        <div className="typing fade-in">
           {typing}
         </div>
       )}
+
       <div ref={messagesEndRef} />
     </div>
   );
