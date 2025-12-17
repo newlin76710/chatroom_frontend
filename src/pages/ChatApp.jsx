@@ -241,7 +241,7 @@ export default function ChatApp() {
           </div>
         </div>
 
-        {/* <div className="user-list">
+        <div className="user-list">
           <strong>在線：{userList.length}</strong>
           {userList.map((u) => (
             <div
@@ -253,11 +253,11 @@ export default function ChatApp() {
               {u.name} (Lv.{u.level})
             </div>
           ))}
-        </div> */}
+        </div>
       </div>
 
-      {/* <SongPanel socket={socket} room={room} name={name} />
-      <VideoPlayer video={currentVideo} onClose={() => setCurrentVideo(null)} /> */}
+      {/* <SongPanel socket={socket} room={room} name={name} /> */}
+      <VideoPlayer video={currentVideo} onClose={() => setCurrentVideo(null)} />
     </div>
   );
 }
