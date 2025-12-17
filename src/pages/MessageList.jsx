@@ -1,5 +1,5 @@
 import { aiAvatars, aiProfiles } from "./aiConfig";
-import './MessageList.css';
+import './MessageList.css'; 
 import './ChatApp.css'
 
 export default function MessageList({ messages, name, typing, messagesEndRef }) {
@@ -14,8 +14,8 @@ export default function MessageList({ messages, name, typing, messagesEndRef }) 
         .map((m, i) => {
           const isSelf = m.user?.name === name;
           const isSystem = m.user?.name === "系統";
-          const isAI = aiAvatars[m.user?.name];
-          const profile = aiProfiles[m.user?.name];
+          const isAI = m.user && aiAvatars[m.user.name];
+          const profile = m.user && aiProfiles[m.user.name];
 
           let msgClass = "chat-message fade-in";
           if (isSystem) msgClass += " system";
@@ -44,7 +44,8 @@ export default function MessageList({ messages, name, typing, messagesEndRef }) 
                   <span className="private-tag fade-in" style={{
                     fontSize: "0.7rem",
                     marginLeft: "6px",
-                    color: "#ffd36a"
+                    color: "#ffd36a",
+                    display: "block"
                   }}>
                     {m.mode === "private" ? "私聊" : "公開對象"}
                   </span>
