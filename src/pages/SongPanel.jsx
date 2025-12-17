@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 
 export default function SongPanel({ socket, room, name, uploadSong }) {
-  const audioRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const audioChunks = useRef([]);
+  const audioRef = useRef(null);
   const timerRef = useRef(null);
 
   const [recording, setRecording] = useState(false);
@@ -12,7 +12,7 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
   const [timeLeft, setTimeLeft] = useState(0);
   const [displayQueue, setDisplayQueue] = useState([]);
 
-  // 開始錄音
+  // 🎤 開始錄音
   const startRecord = async () => {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     const recorder = new MediaRecorder(stream);
@@ -29,55 +29,54 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
     setRecording(true);
   };
 
-  // 停止錄音
+  // ⏹ 停止錄音
   const stopRecord = () => {
-    mediaRecorderRef.current.stop();
+    mediaRecorderRef.current?.stop();
     setRecording(false);
   };
 
-  // 送出分數
+  // ⭐ 送出評分
   const sendScore = () => {
-    if (score > 0) socket.emit("scoreSong", { room, score });
+    if (!playingSong) return;
+    socket.emit("scoreSong", { room, score });
     setScore(0);
     setTimeLeft(0);
   };
 
-  // 倒數計時
+  // ⏱️ 倒數
   useEffect(() => {
     if (timeLeft <= 0) return;
     timerRef.current = setTimeout(() => setTimeLeft(t => t - 1), 1000);
     return () => clearTimeout(timerRef.current);
   }, [timeLeft]);
 
-  const handleSongEnded = () => {
-    // 歌曲播完 → 倒數 30 秒評分
-    setTimeLeft(30);
-  };
-
-  // Socket 事件
+  // 🔊 Socket 事件
   useEffect(() => {
-    // 播放歌曲
     socket.on("playSong", song => {
       if (!song) {
+        // 清空播放狀態
         setPlayingSong(null);
         setTimeLeft(0);
+        setScore(0);
         return;
       }
+
       setPlayingSong({ singer: song.singer, songUrl: song.url });
       setScore(0);
       setTimeLeft(0);
     });
 
-    // 歌曲評分結果
     socket.on("songResult", ({ singer, avg, count }) => {
       alert(`🎤 ${singer} 平均分數：${avg}（${count}人評分）`);
+      // 清空播放區
       setPlayingSong(null);
       setScore(0);
       setTimeLeft(0);
     });
 
-    // 列隊更新
-    socket.on("displayQueueUpdate", queue => setDisplayQueue(queue || []));
+    socket.on("displayQueueUpdate", queue => {
+      setDisplayQueue(queue || []);
+    });
 
     return () => {
       socket.off("playSong");
@@ -86,10 +85,16 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
     };
   }, [socket]);
 
-  // 倒數結束自動送分
+  // ⏱️ 倒數結束自動送分
   useEffect(() => {
-    if (timeLeft === 0 && playingSong && score > 0) sendScore();
+    if (timeLeft === 0 && playingSong && score > 0) {
+      sendScore();
+    }
   }, [timeLeft]);
+
+  const handleSongEnded = () => {
+    setTimeLeft(30); // 歌播完才開始 30 秒倒數
+  };
 
   return (
     <div className="song-panel">
@@ -101,13 +106,13 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
         <button onClick={stopRecord}>結束錄音</button>
       )}
 
-      {/* 列隊顯示 */}
+      {/* 輪候列隊 */}
       {displayQueue.length > 0 && (
         <div className="song-queue">
           <h5>📋 輪候中</h5>
           {displayQueue.map((q, i) => (
             <div key={i} className="queue-item">
-              {i + 1}. {q.type === "song" ? "🎤" : "🎵"} {q.name || q.singer || q.user}
+              {i + 1}. {q.type || q.kind || q.mode || "🎤"} {q.name || q.singer || q.user || "未知"}
             </div>
           ))}
         </div>
@@ -118,6 +123,7 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
         <div className="song-playing">
           <p>🎶 正在播放：{playingSong.singer}</p>
           <audio
+            key={playingSong.songUrl}
             ref={audioRef}
             src={playingSong.songUrl}
             controls
