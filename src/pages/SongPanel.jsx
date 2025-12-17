@@ -18,36 +18,23 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
 
   // 🎤 開始錄音
   const startRecord = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = recorder;
-      audioChunks.current = [];
-
-      recorder.ondataavailable = (e) => audioChunks.current.push(e.data);
-
-      recorder.onstop = async () => {
-        const blob = new Blob(audioChunks.current, { type: "audio/webm" });
-        // ✅ 防呆：確保 uploadSong 是 function
-        if (typeof uploadSong === "function") {
-          await uploadSong(blob);
-        }
-      };
-
-      recorder.start();
-      setRecording(true);
-    } catch (err) {
-      console.error("錄音失敗", err);
-      alert("無法啟用麥克風");
-    }
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const recorder = new MediaRecorder(stream);
+    mediaRecorderRef.current = recorder;
+    audioChunks.current = [];
+    recorder.ondataavailable = (e) => audioChunks.current.push(e.data);
+    recorder.onstop = async () => {
+      const blob = new Blob(audioChunks.current, { type: "audio/webm" });
+      if (uploadSong) await uploadSong(blob);
+    };
+    recorder.start();
+    setRecording(true);
   };
 
   // ⏹ 停止錄音
   const stopRecord = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
-      mediaRecorderRef.current.stop();
-      setRecording(false);
-    }
+    if (mediaRecorderRef.current) mediaRecorderRef.current.stop();
+    setRecording(false);
   };
 
   // ⭐ 送出評分
@@ -134,9 +121,7 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
             <div className="song-queue">
               <h5>📋 輪候中</h5>
               {displayQueue.map((q, i) => (
-                <div key={i} className="queue-item">
-                  {i + 1}. {q.name || q.singer || "未知"}
-                </div>
+                <div key={i} className="queue-item">{i + 1}. {q.name || q.singer || "未知"}</div>
               ))}
             </div>
           )}
@@ -154,13 +139,8 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
               />
               {timeLeft > 0 && (
                 <div className="score-timer">
-                  ⏱️ 評分倒數：{" "}
-                  <span
-                    style={{
-                      color: timeLeft <= 5 ? "#ff4d4f" : "#ffd700",
-                      fontWeight: "bold",
-                    }}
-                  >
+                  ⏱️ 評分倒數：
+                  <span style={{ color: timeLeft <= 5 ? "#ff4d4f" : "#ffd700", fontWeight: "bold" }}>
                     {timeLeft} 秒
                   </span>
                 </div>
@@ -170,15 +150,11 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
                   {[1, 2, 3, 4, 5].map((n) => (
                     <span
                       key={n}
-                      className={`star ${
-                        n <= (hoverScore || score) ? "active" : ""
-                      } ${scoreSent ? "disabled" : ""}`}
+                      className={`star ${n <= (hoverScore || score) ? "active" : ""} ${scoreSent ? "disabled" : ""}`}
                       onMouseEnter={() => !scoreSent && setHoverScore(n)}
                       onMouseLeave={() => !scoreSent && setHoverScore(0)}
                       onClick={() => !scoreSent && sendScore(n)}
-                    >
-                      ★
-                    </span>
+                    >★</span>
                   ))}
                 </div>
                 {scoreSent && <span className="score-value">{score} 分</span>}
@@ -189,14 +165,10 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
       )}
 
       {collapsed && !recording && (
-        <button className="collapsed-record-btn" onClick={startRecord}>
-          🎤 開始唱歌
-        </button>
+        <button className="collapsed-record-btn" onClick={startRecord}>🎤 開始唱歌</button>
       )}
       {collapsed && recording && (
-        <button className="collapsed-record-btn" onClick={stopRecord}>
-          ⏹ 結束錄音
-        </button>
+        <button className="collapsed-record-btn" onClick={stopRecord}>⏹ 結束錄音</button>
       )}
     </div>
   );

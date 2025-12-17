@@ -42,7 +42,7 @@ export default function ChatApp() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  /* ===== Socket 事件（全部 sanitize） ===== */
+  /* ===== Socket 事件 ===== */
   useEffect(() => {
     socket.on("message", (m) => {
       if (!m) return;
@@ -80,11 +80,16 @@ export default function ChatApp() {
       setCurrentVideo(v || null);
     });
 
+    socket.on("typing", (user) => {
+      setTyping(user?.name ? `${user.name} 正在輸入...` : "");
+    });
+
     return () => {
       socket.off("message");
       socket.off("systemMessage");
       socket.off("updateUsers");
       socket.off("videoUpdate");
+      socket.off("typing");
     };
   }, []);
 
@@ -120,9 +125,10 @@ export default function ChatApp() {
 
   const leaveRoom = () => {
     socket.emit("leaveRoom", { room, user: { name } });
-    localStorage.clear();
     setJoined(false);
-    window.location.reload();
+    setMessages([]);
+    setUserList([]);
+    setTarget("");
   };
 
   const send = () => {
@@ -187,28 +193,22 @@ export default function ChatApp() {
               <input
                 type="radio"
                 checked={chatMode === "public"}
-                onChange={() => {
-                  setChatMode("public");
-                  setTarget("");
-                }}
-              />
-              公開
+                onChange={() => { setChatMode("public"); setTarget(""); }}
+              /> 公開
             </label>
             <label>
               <input
                 type="radio"
                 checked={chatMode === "publicTarget"}
                 onChange={() => setChatMode("publicTarget")}
-              />
-              公開對象
+              /> 公開對象
             </label>
             <label>
               <input
                 type="radio"
                 checked={chatMode === "private"}
                 onChange={() => setChatMode("private")}
-              />
-              私聊
+              /> 私聊
             </label>
 
             {(chatMode !== "public") && (
@@ -217,9 +217,7 @@ export default function ChatApp() {
                 {userList
                   .filter((u) => u.name !== name)
                   .map((u) => (
-                    <option key={u.id} value={u.name}>
-                      {u.name}
-                    </option>
+                    <option key={u.id} value={u.name}>{u.name}</option>
                   ))}
               </select>
             )}
@@ -249,14 +247,9 @@ export default function ChatApp() {
             <div
               key={u.id}
               className={`user-item ${u.name === target ? "selected" : ""}`}
-              onClick={() => {
-                setChatMode("private");
-                setTarget(u.name);
-              }}
+              onClick={() => { setChatMode("private"); setTarget(u.name); }}
             >
-              {aiAvatars[u.name] && (
-                <img src={aiAvatars[u.name]} className="user-avatar" />
-              )}
+              {aiAvatars[u.name] && <img src={aiAvatars[u.name]} alt={u.name} className="user-avatar" />}
               {u.name} (Lv.{u.level})
             </div>
           ))}

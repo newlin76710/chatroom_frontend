@@ -10,10 +10,8 @@ export default function VideoPlayer({ video, extractVideoID, onClose }) {
     const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
     if (isTouchDevice) {
-      // 手機：先靜音才能 autoplay
       event.target.mute();
     } else {
-      // 桌面：直接播放，不靜音
       event.target.unMute();
       event.target.setVolume(100);
     }
@@ -22,7 +20,6 @@ export default function VideoPlayer({ video, extractVideoID, onClose }) {
   };
 
   useEffect(() => {
-    // 手機解除靜音
     const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     if (!isTouchDevice) return;
 
@@ -41,7 +38,7 @@ export default function VideoPlayer({ video, extractVideoID, onClose }) {
     };
   }, []);
 
-  if (!video || !extractVideoID(video.url)) return null;
+  if (!video || !video.url || !extractVideoID(video.url)) return null;
 
   return (
     <div className="video-player-float">
@@ -51,15 +48,11 @@ export default function VideoPlayer({ video, extractVideoID, onClose }) {
         opts={{
           width: "240",
           height: "135",
-          playerVars: {
-            autoplay: 1,
-            playsinline: 1,
-            muted: 0, // 讓桌面播放有聲音
-          },
+          playerVars: { autoplay: 1, playsinline: 1, muted: 0 },
         }}
       />
       <div className="video-info">
-        🎧 正在播放（由 {video.user} 點播）
+        🎧 正在播放（由 {video.user?.name || video.user} 點播）
         <button className="close-btn" onClick={onClose}>✖</button>
       </div>
     </div>
