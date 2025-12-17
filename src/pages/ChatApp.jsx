@@ -26,15 +26,20 @@ export default function ChatApp() {
   const [chatMode, setChatMode] = useState("public"); 
   const messagesEndRef = useRef(null);
 
+  // 自動滾到底
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Socket 事件
   useEffect(() => {
     socket.on("message", (m) => setMessages(s => [...s, m]));
-    socket.on("systemMessage", (m) => setMessages(s => [...s, { user: { name: "系統" }, message: m }]));
+    socket.on("systemMessage", (m) =>
+      setMessages(s => [...s, { user: { name: "系統" }, message: m }])
+    );
     socket.on("updateUsers", setUserList);
     socket.on("videoUpdate", setCurrentVideo);
+
     return () => {
       socket.off("message");
       socket.off("systemMessage");
@@ -43,15 +48,21 @@ export default function ChatApp() {
     };
   }, []);
 
+  // 自動登入
   useEffect(() => {
     const storedName = localStorage.getItem("name");
     const storedToken = localStorage.getItem("token") || localStorage.getItem("guestToken");
     const type = localStorage.getItem("type");
     if (!storedName) return;
+
     setName(storedName);
     setToken(storedToken || "");
     setGuestToken(localStorage.getItem("guestToken") || "");
-    socket.emit("joinRoom", { room, user: { name: storedName, type: type || "guest", token: storedToken } });
+
+    socket.emit("joinRoom", {
+      room,
+      user: { name: storedName, type: type || "guest", token: storedToken },
+    });
     setJoined(true);
   }, []);
 
@@ -92,6 +103,7 @@ export default function ChatApp() {
       target: target || "",
       mode: chatMode
     });
+
     setText("");
   };
 
@@ -155,9 +167,9 @@ export default function ChatApp() {
         <div className="user-list">
           <strong>在線：{userList.length}</strong>
           {userList.map(u => (
-            <div key={u?.id} className={`user-item ${u?.name === target ? "selected" : ""}`} onClick={() => { setChatMode("private"); setTarget(u?.name); }}>
-              {aiAvatars[u?.name] && <img src={aiAvatars[u?.name]} className="user-avatar" />}
-              {u?.name} (Lv.{u?.level || 1})
+            <div key={u.id} className={`user-item ${u.name === target ? "selected" : ""}`} onClick={() => { setChatMode("private"); setTarget(u.name); }}>
+              {aiAvatars[u.name] && <img src={aiAvatars[u.name]} className="user-avatar" />}
+              {u.name} (Lv.{u.level || 1})
             </div>
           ))}
         </div>
