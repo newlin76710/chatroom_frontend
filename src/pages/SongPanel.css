@@ -1,11 +1,42 @@
 /* ===== 🎤 唱歌區 ===== */
 .song-panel {
-  background: #111;
-  border-radius: 8px;
-  padding: 12px;
-  margin-top: 12px;
-  color: #eee;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 10px;
+  padding: 10px;
+  width: 300px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 }
+
+.song-panel.collapsed {
+  height: auto;
+  width: 150px;
+  padding: 5px;
+  overflow: hidden;
+}
+
+.song-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
+.song-header h4 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.song-header button {
+  background: #6200ee;
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  padding: 2px 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.song-panel button { margin: 5px 0; }
 
 .song-queue {
   margin-top: 10px;
