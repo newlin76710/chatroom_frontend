@@ -80,6 +80,7 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
     // ✅ 新增：只顯示列隊
     socket.on("displayQueueUpdate", queue => {
       setDisplayQueue(queue || []);
+      console.log("🔥 收到 displayQueueUpdate", queue);
     });
 
     return () => {
