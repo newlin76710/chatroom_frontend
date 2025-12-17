@@ -1,3 +1,4 @@
+// SongPanel.jsx
 import { useEffect, useRef, useState } from "react";
 import "./SongPanel.css";
 
@@ -16,33 +17,32 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
   const [collapsed, setCollapsed] = useState(false);
   const timerRef = useRef(null);
 
-  // 永久防呆：只對文字使用
-  const safeText = (v) => {
-    if (v === null || v === undefined) return "";
-    if (typeof v === "string") return v;
-    if (typeof v === "number") return String(v);
-    return "";
-  };
-
   // 🎤 開始錄音
   const startRecord = async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const recorder = new MediaRecorder(stream);
-    mediaRecorderRef.current = recorder;
-    audioChunks.current = [];
-    recorder.ondataavailable = (e) => audioChunks.current.push(e.data);
-    recorder.onstop = async () => {
-      const blob = new Blob(audioChunks.current, { type: "audio/webm" });
-      if (uploadSong) await uploadSong(blob);
-    };
-    recorder.start();
-    setRecording(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      audioChunks.current = [];
+      recorder.ondataavailable = (e) => audioChunks.current.push(e.data);
+      recorder.onstop = async () => {
+        const blob = new Blob(audioChunks.current, { type: "audio/webm" });
+        if (uploadSong && typeof uploadSong === "function") await uploadSong(blob);
+      };
+      recorder.start();
+      setRecording(true);
+    } catch (err) {
+      console.error("錄音失敗", err);
+      alert("無法取得麥克風權限");
+    }
   };
 
   // ⏹ 停止錄音
   const stopRecord = () => {
-    mediaRecorderRef.current.stop();
-    setRecording(false);
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+      setRecording(false);
+    }
   };
 
   // ⭐ 送出評分
@@ -75,10 +75,7 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
         setTimeLeft(0);
         return;
       }
-      setPlayingSong({
-        singer: safeText(song.singer),
-        songUrl: song.url, // 不 safeText，保留原始 URL
-      });
+      setPlayingSong({ singer: song.singer, songUrl: song.url });
       setScore(0);
       setHoverScore(0);
       setScoreSent(false);
@@ -86,7 +83,7 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
     });
 
     socket.on("songResult", ({ singer, avg, count }) => {
-      alert(`🎤 ${safeText(singer)} 平均分數：${avg}（${count}人評分）`);
+      alert(`🎤 ${singer} 平均分數：${avg}（${count}人評分）`);
       setPlayingSong(null);
       setScore(0);
       setHoverScore(0);
@@ -94,9 +91,7 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
       setTimeLeft(0);
     });
 
-    socket.on("displayQueueUpdate", (queue) => {
-      setDisplayQueue((queue || []).map((q) => safeText(q.name || q.singer)));
-    });
+    socket.on("displayQueueUpdate", (queue) => setDisplayQueue(queue || []));
 
     return () => {
       socket.off("playSong");
@@ -134,7 +129,7 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
             <div className="song-queue">
               <h5>📋 輪候中</h5>
               {displayQueue.map((q, i) => (
-                <div key={i} className="queue-item">{i+1}. {q || "未知"}</div>
+                <div key={i} className="queue-item">{i + 1}. {q.name || q.singer || "未知"}</div>
               ))}
             </div>
           )}
@@ -160,7 +155,7 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
               )}
               <div className="score-wrapper">
                 <div className="score">
-                  {[1,2,3,4,5].map((n) => (
+                  {[1, 2, 3, 4, 5].map((n) => (
                     <span
                       key={n}
                       className={`star ${n <= (hoverScore || score) ? "active" : ""} ${scoreSent ? "disabled" : ""}`}
