@@ -256,8 +256,8 @@ export default function ChatApp() {
         </div> */}
       </div>
 
-      <SongPanel socket={socket} room={room} name={name} />
-      <VideoPlayer video={currentVideo} onClose={() => setCurrentVideo(null)} />
+      {/* <SongPanel socket={socket} room={room} name={name} />
+      <VideoPlayer video={currentVideo} onClose={() => setCurrentVideo(null)} /> */}
     </div>
   );
 }
