@@ -4,151 +4,151 @@ export default function SongFlow({ socket, room, name, uploadSong }) {
   const mediaRecorderRef = useRef(null);
   const audioChunks = useRef([]);
   const audioRef = useRef(null);
+  const timerRef = useRef(null);
 
   const [recording, setRecording] = useState(false);
-  const [playingSong, setPlayingSong] = useState(null);
+  const [queueSong, setQueueSong] = useState(null);
+  const [currentSong, setCurrentSong] = useState(null);
   const [score, setScore] = useState(0);
+  const [submitted, setSubmitted] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
-  const [displayQueue, setDisplayQueue] = useState([]);
-
-  const timerRef = useRef(null);
+  const [songResult, setSongResult] = useState(null);
 
   // 🎤 開始錄音
   const startRecord = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = recorder;
-      audioChunks.current = [];
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const recorder = new MediaRecorder(stream);
+    mediaRecorderRef.current = recorder;
+    audioChunks.current = [];
 
-      recorder.ondataavailable = (e) => audioChunks.current.push(e.data);
+    recorder.ondataavailable = e => audioChunks.current.push(e.data);
 
-      recorder.onstop = async () => {
-        const blob = new Blob(audioChunks.current, { type: "audio/webm" });
-        if (typeof uploadSong === "function") await uploadSong(blob);
-      };
+    recorder.onstop = async () => {
+      const blob = new Blob(audioChunks.current, { type: "audio/webm" });
+      if (uploadSong) await uploadSong(blob);
+    };
 
-      recorder.start();
-      setRecording(true);
-    } catch (err) {
-      console.error("錄音失敗:", err);
-    }
+    recorder.start();
+    setRecording(true);
   };
 
   // ⏹ 停止錄音
   const stopRecord = () => {
-    mediaRecorderRef.current?.stop();
+    mediaRecorderRef.current.stop();
     setRecording(false);
   };
 
   // ⭐ 送出評分
-  const sendScore = () => {
-    if (!socket || !room) return;
-    socket.emit("scoreSong", { room, score });
-    setScore(0);
-    setTimeLeft(0);
+  const submitScore = (s) => {
+    if (submitted) return;
+    setScore(s);
+    setSubmitted(true);
+    socket.emit("scoreSong", { room, score: s });
   };
 
-  // ⏱️ 倒數
+  // ⭐ 星星互動
+  const renderStars = () => (
+    <div className="stars">
+      {[1, 2, 3, 4, 5].map(n => (
+        <span
+          key={n}
+          className={`star ${n <= score ? "active" : ""} ${submitted ? "locked" : ""}`}
+          onMouseEnter={() => !submitted && setScore(n)}
+          onMouseLeave={() => !submitted && setScore(0)}
+          onClick={() => submitScore(n)}
+        >
+          ★
+        </span>
+      ))}
+    </div>
+  );
+
+  // ⏱ 倒數計時
   useEffect(() => {
     if (timeLeft <= 0) return;
-    timerRef.current = setTimeout(() => setTimeLeft((t) => t - 1), 1000);
+    timerRef.current = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
     return () => clearTimeout(timerRef.current);
   }, [timeLeft]);
 
-  const handleSongEnded = () => setTimeLeft(30);
-
-  // 🔊 Socket 事件
+  // 倒數結束自動送分
   useEffect(() => {
-    if (!socket) return;
+    if (timeLeft === 0 && currentSong && score > 0 && !submitted) {
+      submitScore(score);
+    }
+  }, [timeLeft]);
 
-    const playSongHandler = (song) => {
+  const handleSongEnded = () => {
+    setTimeLeft(30); // 播放完才開始 30 秒評分
+  };
+
+  // 🔊 接收後端歌曲播放
+  useEffect(() => {
+    socket.on("playSong", (song) => {
       if (!song) {
-        setPlayingSong(null);
+        setCurrentSong(null);
+        setQueueSong(null);
         setTimeLeft(0);
         return;
       }
-      setPlayingSong({ singer: song.singer, songUrl: song.url });
+      setCurrentSong({ singer: song.singer, songUrl: song.url });
+      setQueueSong(song);
       setScore(0);
+      setSubmitted(false);
       setTimeLeft(0);
-    };
+      setSongResult(null);
+    });
 
-    const songResultHandler = ({ singer, avg, count }) => {
-      alert(`🎤 ${singer} 平均分數：${avg}（${count}人評分）`);
-      setPlayingSong(null);
+    socket.on("songResult", ({ singer, avg, count }) => {
+      setSongResult({ singer, avg, count });
+      setCurrentSong(null);
       setScore(0);
+      setSubmitted(false);
       setTimeLeft(0);
-    };
-
-    const displayQueueHandler = (queue) => {
-      setDisplayQueue(queue || []);
-    };
-
-    socket.on("playSong", playSongHandler);
-    socket.on("songResult", songResultHandler);
-    socket.on("displayQueueUpdate", displayQueueHandler);
+    });
 
     return () => {
-      socket.off("playSong", playSongHandler);
-      socket.off("songResult", songResultHandler);
-      socket.off("displayQueueUpdate", displayQueueHandler);
+      socket.off("playSong");
+      socket.off("songResult");
     };
   }, [socket]);
 
-  // ⏱️ 倒數結束自動送分
-  useEffect(() => {
-    if (timeLeft === 0 && playingSong && score > 0) sendScore();
-  }, [timeLeft]);
-
   return (
-    <div className="song-panel">
+    <div className="song-flow">
       <h4>🎤 唱歌區</h4>
-
       {!recording ? (
         <button onClick={startRecord}>開始唱歌</button>
       ) : (
         <button onClick={stopRecord}>結束錄音</button>
       )}
 
-      {/* 輪候列隊 */}
-      {displayQueue.length > 0 && (
-        <div className="song-queue">
-          <h5>📋 輪候中</h5>
-          {displayQueue.map((q, i) => (
-            <div key={i} className="queue-item">
-              {i + 1}. {q.type === "song" ? "🎤" : "🎵"} {q.name || q.singer || "未知"}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* 正在播放 */}
-      {playingSong && (
+      {currentSong && (
         <div className="song-playing">
-          <p>🎶 正在播放：{playingSong.singer}</p>
-
+          <p>🎶 正在播放：{currentSong.singer}</p>
           <audio
-            key={playingSong.songUrl}
+            key={currentSong.songUrl}
             ref={audioRef}
-            src={playingSong.songUrl}
+            src={currentSong.songUrl}
             controls
             autoPlay
             onEnded={handleSongEnded}
           />
 
-          {timeLeft > 0 && <div>⏱️ 評分倒數：{timeLeft} 秒</div>}
+          {timeLeft > 0 && (
+            <div>
+              ⏱️ 評分倒數：{timeLeft} 秒
+              {renderStars()}
+            </div>
+          )}
 
-          <div className="score">
-            <select value={score} onChange={(e) => setScore(+e.target.value)}>
-              <option value="0">評分</option>
-              {[1, 2, 3, 4, 5].map((n) => (
-                <option key={n} value={n}>
-                  {n} ⭐
-                </option>
-              ))}
-            </select>
-            <button onClick={sendScore}>送出</button>
-          </div>
+          {submitted && (
+            <div className="rated">已評分：{score} 星</div>
+          )}
+        </div>
+      )}
+
+      {songResult && (
+        <div className="song-result">
+          🎉 <strong>{songResult.singer}</strong> 平均分：⭐ {songResult.avg} （{songResult.count} 人評分）
         </div>
       )}
     </div>
