@@ -197,9 +197,10 @@ body {
   transition: transform 0.15s, color 0.15s;
 }
 
+.star.active,
 .star:hover,
-.star.active {
-  color: #ffd700;
+.star:hover ~ .star { 
+  color: #ffd700; 
 }
 
 .star:hover {
@@ -215,6 +216,16 @@ body {
   transform: none;
   color: #999;
 }
+.score-timer {
+  margin-bottom: 4px;
+  font-size: 14px;
+  color: #ffd700;
+}
+
+.score-timer span {
+  transition: color 0.3s;
+}
+
 
 /* ===== 音樂控制按鈕 ===== */
 .song-panel button { padding: 6px 10px; margin-right: 6px; }
