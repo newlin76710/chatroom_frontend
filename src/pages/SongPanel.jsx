@@ -61,7 +61,7 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
         setScore(0); setHoverScore(0); setScoreSent(false); setTimeLeft(0);
         return;
       }
-      setPlayingSong({ singer: song.singer || "未知", songUrl: song.url });
+      setPlayingSong({ singer: song.singer || "未知", songUrl: song.url || "" });
       setScore(0); setHoverScore(0); setScoreSent(false); setTimeLeft(0);
     });
 
@@ -70,10 +70,18 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
       setPlayingSong(null); setScore(0); setHoverScore(0); setScoreSent(false); setTimeLeft(0);
     });
 
-    socket.on("displayQueueUpdate", (queue) => setDisplayQueue(queue || []));
+    socket.on("displayQueueUpdate", (queue) => {
+      // 只保留文字內容，避免整個物件渲染
+      const safeQueue = (queue || []).map(q => ({
+        text: `${q.type || q.kind || q.mode || "🎤"} ${q.name || q.singer || q.user || "未知"}`
+      }));
+      setDisplayQueue(safeQueue);
+    });
 
     return () => {
-      socket.off("playSong"); socket.off("songResult"); socket.off("displayQueueUpdate");
+      socket.off("playSong");
+      socket.off("songResult");
+      socket.off("displayQueueUpdate");
     };
   }, [socket]);
 
@@ -100,9 +108,7 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
             <div className="song-queue">
               <h5>📋 輪候中</h5>
               {displayQueue.map((q, i) => (
-                <div key={i} className="queue-item">
-                  {i + 1}. {q.type || q.kind || q.mode || "🎤"} {q.name || q.singer || q.user || "未知"}
-                </div>
+                <div key={i} className="queue-item">{i + 1}. {q.text}</div>
               ))}
             </div>
           )}
