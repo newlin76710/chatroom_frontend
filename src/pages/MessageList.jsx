@@ -1,5 +1,6 @@
 import { aiAvatars, aiProfiles } from "./aiConfig";
 import './MessageList.css'; // 確保有引用 CSS
+import './ChatApp.css'
 
 export default function MessageList({ messages, name, typing, messagesEndRef }) {
     return (
