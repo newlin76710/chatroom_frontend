@@ -1,25 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import "./SongPanel.css";
 
-/* ===== 永久防呆：任何值轉成可 render 的字串 ===== */
-const safeText = (v) => {
-  if (v === null || v === undefined) return "";
-  if (typeof v === "string") return v;
-  if (typeof v === "number") return String(v);
-  if (typeof v === "object") {
-    if (v.name) return String(v.name);
-    if (v.singer) return String(v.singer);
-    if (v.message) return String(v.message);
-    return JSON.stringify(v);
-  }
-  return String(v);
-};
-
 export default function SongPanel({ socket, room, name, uploadSong }) {
   const mediaRecorderRef = useRef(null);
   const audioChunks = useRef([]);
   const audioRef = useRef(null);
-  const timerRef = useRef(null);
 
   const [recording, setRecording] = useState(false);
   const [playingSong, setPlayingSong] = useState(null);
@@ -29,6 +14,15 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
   const [timeLeft, setTimeLeft] = useState(0);
   const [displayQueue, setDisplayQueue] = useState([]);
   const [collapsed, setCollapsed] = useState(false);
+  const timerRef = useRef(null);
+
+  // 永久防呆：只對文字使用
+  const safeText = (v) => {
+    if (v === null || v === undefined) return "";
+    if (typeof v === "string") return v;
+    if (typeof v === "number") return String(v);
+    return "";
+  };
 
   // 🎤 開始錄音
   const startRecord = async () => {
@@ -83,7 +77,7 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
       }
       setPlayingSong({
         singer: safeText(song.singer),
-        songUrl: safeText(song.url),
+        songUrl: song.url, // 不 safeText，保留原始 URL
       });
       setScore(0);
       setHoverScore(0);
@@ -139,8 +133,8 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
           {displayQueue.length > 0 && (
             <div className="song-queue">
               <h5>📋 輪候中</h5>
-              {displayQueue.map((name, i) => (
-                <div key={i} className="queue-item">{i + 1}. {name}</div>
+              {displayQueue.map((q, i) => (
+                <div key={i} className="queue-item">{i+1}. {q || "未知"}</div>
               ))}
             </div>
           )}
@@ -158,12 +152,15 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
               />
               {timeLeft > 0 && (
                 <div className="score-timer">
-                  ⏱️ 評分倒數：<span style={{ color: timeLeft <= 5 ? "#ff4d4f" : "#ffd700", fontWeight: "bold" }}>{timeLeft} 秒</span>
+                  ⏱️ 評分倒數：
+                  <span style={{ color: timeLeft <= 5 ? "#ff4d4f" : "#ffd700", fontWeight: "bold" }}>
+                    {timeLeft} 秒
+                  </span>
                 </div>
               )}
               <div className="score-wrapper">
                 <div className="score">
-                  {[1, 2, 3, 4, 5].map((n) => (
+                  {[1,2,3,4,5].map((n) => (
                     <span
                       key={n}
                       className={`star ${n <= (hoverScore || score) ? "active" : ""} ${scoreSent ? "disabled" : ""}`}
