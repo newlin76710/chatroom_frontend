@@ -3,7 +3,7 @@ import { io } from "socket.io-client";
 import { aiAvatars } from "./aiConfig";
 import MessageList from "./MessageList";
 import VideoPlayer from "./VideoPlayer";
-import SongFlow from "./SongFlow";
+import SongFlow from "../components/SongFlow";
 import './ChatApp.css';
 
 const BACKEND = import.meta.env.VITE_BACKEND_URL || 'http://localhost:10000';
