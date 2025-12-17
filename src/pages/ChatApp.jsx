@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 import MessageList from "./MessageList";
 import VideoPlayer from "./VideoPlayer";
-import SongPanel from "../components/SongPanel";
+import SongFlow from "../components/SongFlow";
 
 import './ChatApp.css';
 
@@ -151,7 +151,7 @@ export default function ChatApp() {
       </div>
 
       {/* 🎤 歌唱區 */}
-      <SongPanel
+      <SongFlow
         socket={socket}
         room={room}
         name={name}

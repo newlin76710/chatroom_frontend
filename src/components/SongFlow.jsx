@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-export default function SongPanel({ socket, room, name, uploadSong, currentSong, songResult, displayQueue }) {
+export default function SongFlow({ socket, room, name, uploadSong, currentSong, songResult, displayQueue }) {
   const mediaRecorderRef = useRef(null);
   const audioChunks = useRef([]);
   const audioRef = useRef(null);
