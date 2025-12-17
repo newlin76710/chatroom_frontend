@@ -112,7 +112,9 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
           <h5>📋 輪候中</h5>
           {displayQueue.map((q, i) => (
             <div key={i} className="queue-item">
-              {i + 1}. {q.type === "song" ? "🎤" : "🎵"} {q.name}
+              {i + 1}.{" "}
+              {q.type || q.kind || q.mode || "🎤"}{" "}
+              {q.name || q.singer || q.user || "未知"}
             </div>
           ))}
         </div>
