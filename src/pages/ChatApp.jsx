@@ -124,8 +124,8 @@ export default function ChatApp() {
 
       <div className="chat-main">
         <div className="chat-box">
-          <MessageList messages={messages} name={name} typing={typing} messagesEndRef={messagesEndRef} />
-
+          {/*<MessageList messages={messages} name={name} typing={typing} messagesEndRef={messagesEndRef} />
+*/}
           <div className="chat-input">
             <div className="chat-mode">
               <label><input type="radio" value="public" checked={chatMode === "public"} onChange={() => { setChatMode("public"); setTarget(""); }} /> 公開</label>
