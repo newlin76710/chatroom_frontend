@@ -52,30 +52,38 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
     return () => clearTimeout(timerRef.current);
   }, [timeLeft]);
 
-  const handleSongEnded = () => setTimeLeft(30);
+  const handleSongEnded = () => {
+    setTimeLeft(30);
+  };
 
   useEffect(() => {
     socket.on("playSong", (song) => {
       if (!song) {
         setPlayingSong(null);
-        setScore(0); setHoverScore(0); setScoreSent(false); setTimeLeft(0);
+        setScore(0);
+        setHoverScore(0);
+        setScoreSent(false);
+        setTimeLeft(0);
         return;
       }
-      setPlayingSong({ singer: song.singer || "未知", songUrl: song.url || "" });
-      setScore(0); setHoverScore(0); setScoreSent(false); setTimeLeft(0);
+      setPlayingSong({ singer: song.singer || "未知", songUrl: song.url });
+      setScore(0);
+      setHoverScore(0);
+      setScoreSent(false);
+      setTimeLeft(0);
     });
 
     socket.on("songResult", ({ singer, avg, count }) => {
       alert(`🎤 ${singer || "未知"} 平均分數：${avg}（${count}人評分）`);
-      setPlayingSong(null); setScore(0); setHoverScore(0); setScoreSent(false); setTimeLeft(0);
+      setPlayingSong(null);
+      setScore(0);
+      setHoverScore(0);
+      setScoreSent(false);
+      setTimeLeft(0);
     });
 
     socket.on("displayQueueUpdate", (queue) => {
-      // 只保留文字內容，避免整個物件渲染
-      const safeQueue = (queue || []).map(q => ({
-        text: `${q.type || q.kind || q.mode || "🎤"} ${q.name || q.singer || q.user || "未知"}`
-      }));
-      setDisplayQueue(safeQueue);
+      setDisplayQueue(queue || []);
     });
 
     return () => {
@@ -86,11 +94,13 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
   }, [socket]);
 
   useEffect(() => {
-    if (timeLeft === 0 && playingSong && score > 0 && !scoreSent) sendScore(score);
+    if (timeLeft === 0 && playingSong && score > 0 && !scoreSent) {
+      sendScore(score);
+    }
   }, [timeLeft]);
 
   return (
-    <div className={`song-panel floating ${collapsed ? "collapsed" : ""}`}>
+    <div className={`song-panel floating ${collapsed ? "collapsed" : ""}`} style={{ background: "#121212", color: "#fff" }}>
       <div className="song-header" onClick={() => setCollapsed(!collapsed)}>
         <h4>🎤 唱歌區</h4>
         <button>{collapsed ? "展開" : "收起"}</button>
@@ -108,7 +118,9 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
             <div className="song-queue">
               <h5>📋 輪候中</h5>
               {displayQueue.map((q, i) => (
-                <div key={i} className="queue-item">{i + 1}. {q.text}</div>
+                <div key={i} className="queue-item">
+                  {i + 1}. {q.type || q.kind || q.mode || "🎤"} {q.name || q.singer || q.user || "未知"}
+                </div>
               ))}
             </div>
           )}
@@ -124,6 +136,7 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
                 autoPlay
                 onEnded={handleSongEnded}
               />
+
               {timeLeft > 0 && (
                 <div className="score-timer">
                   ⏱️ 評分倒數：
@@ -132,6 +145,7 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
                   </span>
                 </div>
               )}
+
               <div className="score-wrapper">
                 <div className="score">
                   {[1,2,3,4,5].map((n) => (
