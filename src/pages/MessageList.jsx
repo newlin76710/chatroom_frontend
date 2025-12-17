@@ -1,6 +1,5 @@
 import { aiAvatars, aiProfiles } from "./aiConfig";
-import './MessageList.css';
-import './ChatApp.css'
+import './ChatApp.css';
 
 export default function MessageList({ messages, name, typing, messagesEndRef }) {
   return (
@@ -36,19 +35,19 @@ export default function MessageList({ messages, name, typing, messagesEndRef }) 
               {!isSelf && !isSystem && (
                 <img src={aiAvatars[m.user?.name] || "/avatars/default.png"} className="message-avatar" />
               )}
+
               <div className={msgClass} style={{ color, position: "relative", fontSize: "0.8rem" }}>
-                <strong style={{ color: (m.mode === "private" ? "#ffd36a" : m.mode === "publicTarget" ? "#ffcc66" : color) }}>
-                  {m.user?.name || "未知"}{m.target ? ` → ${m.target}` : ""}：
-                </strong> {m.message}
+                
+                {/* 標籤在箭頭上方 */}
                 {(m.mode === "private" || m.mode === "publicTarget") && m.target && (
-                  <span className="private-tag fade-in" style={{
-                    fontSize: "0.7rem",
-                    marginLeft: "6px",
-                    color: "#ffd36a"
-                  }}>
+                  <div style={{ fontSize: "0.7rem", color: "#ffd36a", marginBottom: "2px", textAlign: isSelf ? "right" : "left" }}>
                     {m.mode === "private" ? "私聊" : "公開對象"}
-                  </span>
+                  </div>
                 )}
+
+                <strong>
+                  {m.user?.name}{m.target ? ` → ${m.target}` : ""}：
+                </strong> {m.message}
               </div>
             </div>
           );
