@@ -46,7 +46,7 @@ body {
   max-width: 75%;
   padding: 4px 8px;
   border-radius: 6px;
-  font-size: 0.8rem; /* 小字 */
+  font-size: 0.8rem;
 }
 
 .chat-message.self { 
@@ -58,8 +58,8 @@ body {
 .chat-message.system { font-weight: bold; color: #ff9900; }
 .chat-message.other { background-color: #222; }
 
-.chat-message.male { color: #006633; }   /* 深綠 */
-.chat-message.female { color: #ff66aa; } /* 粉紅 */
+.chat-message.male { color: #006633; }
+.chat-message.female { color: #ff66aa; }
 
 /* ===== 使用者頭像 ===== */
 .message-avatar, .user-avatar {
@@ -146,101 +146,6 @@ body {
 }
 
 .video-info button { background: transparent; border: none; color: #fff; cursor: pointer; }
-
-/* ===== 🎤 唱歌區 ===== */
-.song-panel {
-  background: #111;
-  border-radius: 8px;
-  padding: 12px;
-  margin-top: 12px;
-  color: #eee;
-}
-
-.song-queue {
-  margin-top: 10px;
-  padding: 8px;
-  background: #1b1b1b;
-  border-radius: 6px;
-  border: 1px solid #333;
-}
-
-.song-queue h5 { margin: 0 0 6px; font-size: 14px; color: #ffd36a; }
-
-.queue-item {
-  font-size: 13px;
-  padding: 4px 6px;
-  border-bottom: 1px dashed #333;
-}
-
-.queue-item:last-child { border-bottom: none; }
-
-.song-playing {
-  margin-top: 12px;
-  padding: 10px;
-  background: #181818;
-  border-radius: 6px;
-  border: 1px solid #333;
-}
-
-/* ===== ⭐ 星星評分 ===== */
-/* ⭐ 星星評分 */
-.score {
-  display: flex;
-  gap: 6px;
-  margin-top: 6px;
-}
-
-.star.active,
-.star:hover,
-.star:hover ~ .star { 
-  color: #ffd700; 
-}
-
-.star:hover {
-  transform: scale(1.2);
-}
-
-.score-timer {
-  margin-bottom: 4px;
-  font-size: 14px;
-  color: #ffd700;
-}
-
-.score-timer span {
-  transition: color 0.3s;
-}
-.star {
-  cursor: pointer;
-  font-size: 26px;
-  color: #555;
-  margin: 0 4px;
-  transition: transform 0.15s, color 0.15s;
-}
-
-.star.disabled {
-  cursor: default;
-}
-
-.star.disabled:hover {
-  color: #ffd700; /* 送分後 hover 不變色 */
-  transform: none; /* 送分後不縮放 */
-}
-
-
-/* ===== 音樂控制按鈕 ===== */
-.song-panel button { padding: 6px 10px; margin-right: 6px; }
-.song-playing audio { width: 100%; }
-
-/* ===== 評分結果 ===== */
-.song-result {
-  margin-top: 10px;
-  padding: 8px;
-  background: #2a2a2a;
-  border-radius: 8px;
-  text-align: center;
-  color: #ffd700;
-  font-size: 14px;
-}
 
 /* ===== 手機板調整 ===== */
 @media (max-width: 480px) {
