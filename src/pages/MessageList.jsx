@@ -1,19 +1,45 @@
 import { aiAvatars, aiProfiles } from "./aiConfig";
 import "./ChatApp.css";
 
-export default function MessageList({ messages, name, typing, messagesEndRef }) {
+/* ===== 永久防 #31：任何值都轉成可 render 的字串 ===== */
+const safeText = (v) => {
+  if (v === null || v === undefined) return "";
+  if (typeof v === "string") return v;
+  if (typeof v === "number") return String(v);
+  if (typeof v === "object") {
+    if (v.text) return String(v.text);
+    if (v.message) return String(v.message);
+    if (v.name) return String(v.name);
+    return JSON.stringify(v);
+  }
+  return String(v);
+};
+
+export default function MessageList({
+  messages = [],
+  name = "",
+  typing = "",
+  messagesEndRef
+}) {
   return (
     <div className="chat-messages">
       {messages
         .filter(m => {
-          if (m.mode === "private") return m.user?.name === name || m.target === name;
+          if (!m) return false;
+          if (m.mode === "private") {
+            return m.user?.name === name || m.target === name;
+          }
           return true;
         })
         .map((m, i) => {
-          const isSelf = m.user?.name === name;
-          const isSystem = m.user?.name === "系統";
-          const isAI = aiAvatars[m.user?.name];
-          const profile = aiProfiles[m.user?.name];
+          const userName = safeText(m.user?.name);
+          const targetName = safeText(m.target);
+          const messageText = safeText(m.message);
+
+          const isSelf = userName === name;
+          const isSystem = userName === "系統";
+          const isAI = !!aiAvatars[userName];
+          const profile = aiProfiles[userName];
 
           let msgClass = "chat-message fade-in";
           if (isSystem) msgClass += " system";
@@ -22,52 +48,71 @@ export default function MessageList({ messages, name, typing, messagesEndRef }) 
           else msgClass += " other";
 
           let color = "#eee";
-          if (!isSystem && !isSelf) {
-            if (profile?.gender === "male") color = "#006633";
-            else if (profile?.gender === "female") color = "#ff66aa";
-            else color = profile?.color || "#eee";
-          } else if (isSelf) color = "#fff";
-          else if (isSystem) color = "#ff9900";
+          if (isSystem) color = "#ff9900";
+          else if (isSelf) color = "#fff";
+          else if (profile?.gender === "male") color = "#006633";
+          else if (profile?.gender === "female") color = "#ff66aa";
+          else if (profile?.color) color = profile.color;
 
           return (
             <div
               key={i}
               className="message-row"
-              style={{ justifyContent: isSelf ? "flex-end" : "flex-start" }}
+              style={{
+                justifyContent: isSelf ? "flex-end" : "flex-start"
+              }}
             >
               {!isSelf && !isSystem && (
                 <img
-                  src={aiAvatars[m.user?.name] || "/avatars/default.png"}
+                  src={aiAvatars[userName] || "/avatars/default.png"}
                   className="message-avatar"
+                  alt=""
                 />
               )}
 
-              {/* 核心：改成 column 排版 */}
               <div
-                className="message-column"
-                style={{ alignItems: isSelf ? "flex-end" : "flex-start" }}
+                className={msgClass}
+                style={{
+                  color,
+                  position: "relative",
+                  fontSize: "0.8rem"
+                }}
               >
-                {(m.mode === "private" || m.mode === "publicTarget") && m.target && (
-                  <div className="message-tag">
+                {/* 私聊 / 公開對象 標籤 */}
+                {(m.mode === "private" || m.mode === "publicTarget") && targetName && (
+                  <div
+                    style={{
+                      fontSize: "0.7rem",
+                      color: "#ffd36a",
+                      marginBottom: "2px",
+                      textAlign: isSelf ? "right" : "left"
+                    }}
+                  >
                     {m.mode === "private" ? "私聊" : "公開對象"}
                   </div>
                 )}
 
-                <div className={msgClass} style={{ color }}>
-                  <strong>
-                    {m.user?.name}
-                    {m.target ? ` → ${m.target}` : ""}：
-                  </strong>{" "}
-                  {m.message}
-                </div>
+                <strong>
+                  {userName}
+                  {targetName ? ` → ${targetName}` : ""}：
+                </strong>{" "}
+                {messageText}
               </div>
             </div>
           );
         })}
 
+      {/* typing 顯示（安全） */}
       {typing && (
-        <div className="typing fade-in">
-          {typing}
+        <div
+          className="typing fade-in"
+          style={{
+            fontSize: "0.8rem",
+            color: "#aaa",
+            marginTop: "4px"
+          }}
+        >
+          {safeText(typing)}
         </div>
       )}
 
