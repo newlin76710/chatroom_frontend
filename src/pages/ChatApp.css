@@ -39,19 +39,25 @@ body {
   border: 1px solid #555;
 }
 
-.message-row { display: flex; margin-bottom: 6px; }
+/* ===== 訊息樣式 ===== */
+.message-row { display: flex; margin-bottom: 4px; }
 
 .chat-message {
   max-width: 75%;
-  padding: 6px 10px;
+  padding: 4px 8px;
   border-radius: 6px;
-  font-size: 0.85rem; /* 小字 */
+  font-size: 0.8rem; /* 小字 */
 }
 
-.chat-message.self { align-self: flex-end; background-color: #2a2a2a; }
+.chat-message.self { 
+  align-self: flex-end; 
+  background-color: #2a2a2a; 
+}
+
 .chat-message.ai { background-color: #3d1a5f; }
 .chat-message.system { font-weight: bold; color: #ff9900; }
 .chat-message.other { background-color: #222; }
+
 .chat-message.male { color: #006633; }   /* 深綠 */
 .chat-message.female { color: #ff66aa; } /* 粉紅 */
 
@@ -182,6 +188,7 @@ body {
   gap: 6px;
 }
 
+/* ===== ⭐ 星星評分 ===== */
 .star {
   cursor: pointer;
   font-size: 26px;
@@ -189,8 +196,10 @@ body {
   transition: transform 0.15s, color 0.15s;
 }
 
-.star:hover { transform: scale(1.2); color: #ffd700; }
-.star.active { color: #ffd700; }
+.star:hover, .star.active { 
+  color: #ffd700; 
+  transform: scale(1.2);
+}
 
 /* ===== 音樂控制按鈕 ===== */
 .song-panel button { padding: 6px 10px; margin-right: 6px; }
@@ -206,10 +215,6 @@ body {
   color: #ffd700;
   font-size: 14px;
 }
-
-/* ===== 音樂評分星星效果 ===== */
-.star.locked { cursor: default; }
-.star.active, .star:hover { color: #ffd700; }
 
 /* ===== 手機板調整 ===== */
 @media (max-width: 480px) {
