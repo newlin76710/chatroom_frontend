@@ -1,14 +1,12 @@
-// ChatApp.jsx
 import { useState, useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 import MessageList from "./MessageList";
 import VideoPlayer from "./VideoPlayer";
 import SongPanel from "./SongPanel";
-import { aiAvatars, aiProfiles } from "./aiConfig";
+import { aiAvatars } from "./aiConfig";
 import "./ChatApp.css";
 
 const BACKEND = import.meta.env.VITE_BACKEND_URL || "http://localhost:10000";
-const socket = io(BACKEND);
 
 const safeText = (v) => {
   if (v === null || v === undefined) return "";
@@ -22,6 +20,12 @@ const safeText = (v) => {
   }
   return String(v);
 };
+
+// 全局 socket 保證 Hot Reload 不重複建立
+let globalSocket = null;
+if (!globalSocket) {
+  globalSocket = io(BACKEND);
+}
 
 export default function ChatApp() {
   const [room] = useState("public");
@@ -39,12 +43,14 @@ export default function ChatApp() {
   const [showSongPanel, setShowSongPanel] = useState(false);
   const messagesEndRef = useRef(null);
 
+  const socket = globalSocket;
+
   // 自動捲動
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Socket 事件，只綁一次
+  // Socket 事件註冊（只註冊一次）
   useEffect(() => {
     const handleMessage = (m) => {
       if (!m) return;
@@ -60,7 +66,7 @@ export default function ChatApp() {
       ]);
     };
 
-    const handleSystem = (m) => {
+    const handleSystemMessage = (m) => {
       setMessages((s) => [...s, { user: { name: "系統" }, message: safeText(m) }]);
     };
 
@@ -75,24 +81,24 @@ export default function ChatApp() {
       );
     };
 
-    const handleVideo = (v) => setCurrentVideo(v || null);
+    const handleVideoUpdate = (v) => setCurrentVideo(v || null);
 
     socket.on("message", handleMessage);
-    socket.on("systemMessage", handleSystem);
+    socket.on("systemMessage", handleSystemMessage);
     socket.on("updateUsers", handleUpdateUsers);
-    socket.on("videoUpdate", handleVideo);
+    socket.on("videoUpdate", handleVideoUpdate);
 
     return () => {
       socket.off("message", handleMessage);
-      socket.off("systemMessage", handleSystem);
+      socket.off("systemMessage", handleSystemMessage);
       socket.off("updateUsers", handleUpdateUsers);
-      socket.off("videoUpdate", handleVideo);
+      socket.off("videoUpdate", handleVideoUpdate);
     };
-  }, []);
+  }, [socket]);
 
-  // 自動登入一次
+  // 自動登入（Hot Reload 不重複觸發）
   useEffect(() => {
-    if (joined) return; // 已加入就不再 joinRoom
+    if (joined) return; // 避免 Hot Reload 重複 join
     const storedName = localStorage.getItem("name");
     const token = localStorage.getItem("token") || localStorage.getItem("guestToken");
     const type = localStorage.getItem("type") || "guest";
@@ -102,11 +108,9 @@ export default function ChatApp() {
     setName(safeName);
     socket.emit("joinRoom", { room, user: { name: safeName, type, token } });
     setJoined(true);
-  }, [joined, room]);
+  }, [room, socket, joined]);
 
-  // 訪客登入
   const loginGuest = async () => {
-    if (joined) return;
     const res = await fetch(`${BACKEND}/auth/guest`, { method: "POST" });
     const data = await res.json();
     const safeName = safeText(data.name);
@@ -123,14 +127,12 @@ export default function ChatApp() {
     setJoined(true);
   };
 
-  // 離開聊天室回 login
   const leaveRoom = () => {
     socket.emit("leaveRoom", { room, user: { name } });
     localStorage.clear();
-    window.location.href = "/login"; // 指定回 login
+    window.location.href = "/login"; 
   };
 
-  // 發訊息
   const send = () => {
     if (!text.trim()) return;
     if (chatMode !== "public" && !target) return;
@@ -145,7 +147,6 @@ export default function ChatApp() {
     setText("");
   };
 
-  // YouTube
   const extractVideoID = (url) => {
     if (!url) return null;
     const match =
@@ -162,7 +163,6 @@ export default function ChatApp() {
     setVideoUrl("");
   };
 
-  // 上傳錄音
   const uploadSong = async (blob) => {
     try {
       const formData = new FormData();
@@ -175,7 +175,6 @@ export default function ChatApp() {
 
   return (
     <div className="chat-layout">
-      {/* 左側聊天室 */}
       <div className="chat-left">
         <div className="chat-title">尋夢園男歡女愛聊天室</div>
 
@@ -186,7 +185,6 @@ export default function ChatApp() {
             <span>Hi, {name}</span>
             <button onClick={leaveRoom}>離開</button>
 
-            {/* YouTube 點播 */}
             <div className="video-request">
               <input
                 value={videoUrl}
@@ -196,15 +194,12 @@ export default function ChatApp() {
               <button onClick={playVideo}>🎵 點播</button>
             </div>
 
-            {/* 唱歌按鈕 */}
             <button onClick={() => setShowSongPanel(!showSongPanel)}>🎤 唱歌</button>
           </div>
         )}
 
-        {/* 訊息列表 */}
         <MessageList messages={messages} name={name} typing={typing} messagesEndRef={messagesEndRef} />
 
-        {/* 聊天輸入 */}
         <div className="chat-input">
           <label>
             <input type="radio" checked={chatMode === "public"} onChange={() => { setChatMode("public"); setTarget(""); }} /> 公開
@@ -234,7 +229,6 @@ export default function ChatApp() {
           <button onClick={send}>發送</button>
         </div>
 
-        {/* 唱歌區 */}
         {showSongPanel && (
           <SongPanel
             socket={socket}
@@ -252,7 +246,6 @@ export default function ChatApp() {
         )}
       </div>
 
-      {/* 右側區域：YouTube 播放器 + 使用者列表 */}
       <div className="chat-right">
         <div className="youtube-container">
           <VideoPlayer video={currentVideo} extractVideoID={extractVideoID} onClose={() => setCurrentVideo(null)} />
