@@ -7,25 +7,34 @@ body {
   font-family: Arial, sans-serif;
   min-height: 100vh;
 }
-
-/* ===== 最外層 Layout ===== */
+/* 聊天整個 layout */
 .chat-layout {
+  max-width: 1100px;    /* 固定最大寬度 */
+  width: 100%;          /* 滿版時不超過 max-width */
+  margin: 0 auto;       /* 置中 */
+  padding: 16px;
   display: flex;
   gap: 12px;
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 16px;
-  min-height: 100vh;
 }
 
-/* ================= 左側：聊天室 ================= */
-/* 聊天左側 */
+/* 左側聊天室 */
 .chat-left {
+  flex: 2;              /* 左側占比 */
   display: flex;
   flex-direction: column;
   gap: 10px;
-  height: 100vh;        /* 鎖定高度為視窗高度 */
+  height: 100vh;        /* 高度鎖定視窗高度 */
 }
+
+/* 右側列表 */
+.chat-right {
+  flex: 1;              /* 右側占比，比左側窄 */
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 240px;     /* 固定右側最大寬度 */
+}
+
 
 /* 訊息列表固定高度 */
 .message-list {
