@@ -25,9 +25,9 @@ export default function MessageList({ messages = [], name = "", typing = "", mes
           const messageText = safeText(m.message);
           const isSelf = userName === name;
           const isSystem = userName === "系統";
-          const isAI = !!aiAvatars[userName];
           const profile = aiProfiles[userName];
 
+          // 訊息顏色
           let color = "#eee";
           if (isSystem) color = "#ff9900";
           else if (isSelf) color = "#fff";
@@ -35,38 +35,65 @@ export default function MessageList({ messages = [], name = "", typing = "", mes
           else if (profile?.gender === "female") color = "#ff66aa";
           else if (profile?.color) color = profile.color;
 
+          // 標籤
+          const tag = (m.mode === "private" ? "(私聊)" : m.mode === "publicTarget" ? "(公開對象)" : "");
+
           return (
-            <div key={i} className="message-row" style={{ justifyContent: isSelf ? "flex-end" : "flex-start" }}>
+            <div
+              key={i}
+              className="message-row"
+              style={{
+                display: "flex",
+                justifyContent: isSelf ? "flex-end" : "flex-start",
+                alignItems: "center",
+                marginBottom: "4px",
+              }}
+            >
+              {/* Avatar */}
               {!isSelf && !isSystem && (
-                <img src={aiAvatars[userName] || "/avatars/default.png"} className="message-avatar" alt={userName} />
+                <img
+                  src={aiAvatars[userName] || "/avatars/default.png"}
+                  alt={userName}
+                  className="message-avatar"
+                />
               )}
 
-              <div style={{ display: "flex", flexDirection: "column", fontSize: "1rem", maxWidth: "75%", color }}>
-                {/* 公/私聊標籤 */}
-                {(m.mode === "private" || m.mode === "publicTarget") && targetName && (
-                  <div style={{ fontSize: "0.7rem", color: "#ffd36a", marginBottom: "2px", textAlign: isSelf ? "right" : "left" }}>
-                    {m.mode === "private" ? "私聊" : "公開對象"}
-                  </div>
-                )}
-
-                {/* 使用者名稱 + 箭頭 */}
-                <div style={{ fontWeight: "bold", marginBottom: "2px" }}>
-                  {userName}{targetName ? " → " + targetName : ""}：
-                </div>
-
-                {/* 訊息內容 */}
-                <div>{messageText}</div>
+              {/* 訊息內容一行 */}
+              <div
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  color,
+                  fontSize: "1rem",
+                  maxWidth: "100%",
+                  whiteSpace: "nowrap",      // 文字不換行
+                  overflow: "hidden",
+                  textOverflow: "ellipsis", // 過長顯示省略號
+                }}
+              >
+                {tag && <span style={{ fontSize: "0.7rem", color: "#ffd36a", marginRight: "4px" }}>{tag}</span>}
+                <span style={{ fontWeight: "bold" }}>
+                  {userName}{targetName ? ` → ${targetName}` : ""}：
+                </span>
+                <span style={{ marginLeft: "4px" }}>{messageText}</span>
               </div>
             </div>
           );
         })}
 
+      {/* typing 提示 */}
       {typing && (
-        <div className="typing fade-in" style={{ fontSize: "0.9rem", color: "#aaa", marginTop: "4px" }}>
+        <div
+          className="typing fade-in"
+          style={{ fontSize: "0.9rem", color: "#aaa", marginTop: "4px" }}
+        >
           {safeText(typing)}
         </div>
       )}
+
       <div ref={messagesEndRef} />
     </div>
   );
 }
+
+

@@ -1,9 +1,10 @@
+// ChatApp.jsx
 import { useState, useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 import MessageList from "./MessageList";
 import VideoPlayer from "./VideoPlayer";
 import SongPanel from "./SongPanel";
-import { aiAvatars } from "./aiConfig";
+import { aiAvatars, aiProfiles } from "./aiConfig";
 import "./ChatApp.css";
 
 const BACKEND = import.meta.env.VITE_BACKEND_URL || "http://localhost:10000";
@@ -43,9 +44,9 @@ export default function ChatApp() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Socket 事件
+  // Socket 事件，只綁一次
   useEffect(() => {
-    socket.on("message", (m) => {
+    const handleMessage = (m) => {
       if (!m) return;
       setMessages((s) => [
         ...s,
@@ -57,16 +58,13 @@ export default function ChatApp() {
           mode: safeText(m.mode),
         },
       ]);
-    });
+    };
 
-    socket.on("systemMessage", (m) => {
-      setMessages((s) => [
-        ...s,
-        { user: { name: "系統" }, message: safeText(m) },
-      ]);
-    });
+    const handleSystem = (m) => {
+      setMessages((s) => [...s, { user: { name: "系統" }, message: safeText(m) }]);
+    };
 
-    socket.on("updateUsers", (list = []) => {
+    const handleUpdateUsers = (list = []) => {
       if (!Array.isArray(list)) return;
       setUserList(
         list.map((u, i) => ({
@@ -75,20 +73,26 @@ export default function ChatApp() {
           level: u?.level || 1,
         }))
       );
-    });
+    };
 
-    socket.on("videoUpdate", (v) => setCurrentVideo(v || null));
+    const handleVideo = (v) => setCurrentVideo(v || null);
+
+    socket.on("message", handleMessage);
+    socket.on("systemMessage", handleSystem);
+    socket.on("updateUsers", handleUpdateUsers);
+    socket.on("videoUpdate", handleVideo);
 
     return () => {
-      socket.off("message");
-      socket.off("systemMessage");
-      socket.off("updateUsers");
-      socket.off("videoUpdate");
+      socket.off("message", handleMessage);
+      socket.off("systemMessage", handleSystem);
+      socket.off("updateUsers", handleUpdateUsers);
+      socket.off("videoUpdate", handleVideo);
     };
   }, []);
 
-  // 自動登入
+  // 自動登入一次
   useEffect(() => {
+    if (joined) return; // 已加入就不再 joinRoom
     const storedName = localStorage.getItem("name");
     const token = localStorage.getItem("token") || localStorage.getItem("guestToken");
     const type = localStorage.getItem("type") || "guest";
@@ -98,10 +102,11 @@ export default function ChatApp() {
     setName(safeName);
     socket.emit("joinRoom", { room, user: { name: safeName, type, token } });
     setJoined(true);
-  }, [room]);
+  }, [joined, room]);
 
   // 訪客登入
   const loginGuest = async () => {
+    if (joined) return;
     const res = await fetch(`${BACKEND}/auth/guest`, { method: "POST" });
     const data = await res.json();
     const safeName = safeText(data.name);
@@ -118,10 +123,11 @@ export default function ChatApp() {
     setJoined(true);
   };
 
+  // 離開聊天室回 login
   const leaveRoom = () => {
     socket.emit("leaveRoom", { room, user: { name } });
     localStorage.clear();
-    window.location.reload();
+    window.location.href = "/login"; // 指定回 login
   };
 
   // 發訊息
@@ -200,7 +206,6 @@ export default function ChatApp() {
 
         {/* 聊天輸入 */}
         <div className="chat-input">
-          {/* radio / select */}
           <label>
             <input type="radio" checked={chatMode === "public"} onChange={() => { setChatMode("public"); setTarget(""); }} /> 公開
           </label>
@@ -229,7 +234,7 @@ export default function ChatApp() {
           <button onClick={send}>發送</button>
         </div>
 
-        {/* 唱歌區（左側訊息列表最右邊） */}
+        {/* 唱歌區 */}
         {showSongPanel && (
           <SongPanel
             socket={socket}
