@@ -13,6 +13,9 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
   const [scoreSent, setScoreSent] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
   const [collapsed, setCollapsed] = useState(false);
+  const [position, setPosition] = useState({ x: 50, y: 100 }); // 浮動初始位置
+  const [dragging, setDragging] = useState(false);
+  const dragStartRef = useRef({ x: 0, y: 0 });
   const timerRef = useRef(null);
 
   // 🎤 開始錄音
@@ -52,7 +55,6 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
     }
   };
 
-  // ⏹ 停止錄音
   const stopRecord = () => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
       mediaRecorderRef.current.stop();
@@ -60,7 +62,6 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
     }
   };
 
-  // ⭐ 送出評分
   const sendScore = (n) => {
     if (scoreSent) return;
     setScore(n);
@@ -70,7 +71,6 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
     setTimeLeft(0);
   };
 
-  // ⏱ 評分倒數
   useEffect(() => {
     if (timeLeft <= 0) return;
     timerRef.current = setTimeout(() => setTimeLeft((t) => t - 1), 1000);
@@ -79,11 +79,9 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
 
   const handleSongEnded = () => setTimeLeft(30);
 
-  // 🔊 Socket 事件
   useEffect(() => {
     socket.on("playSong", (song) => {
       if (!song) {
-        // 播放完畢，清除狀態
         setPlayingSong(null);
         setScore(0);
         setHoverScore(0);
@@ -117,11 +115,49 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
     if (timeLeft === 0 && playingSong && score > 0 && !scoreSent) sendScore(score);
   }, [timeLeft]);
 
+  // 拖動事件
+  const handleMouseDown = (e) => {
+    setDragging(true);
+    dragStartRef.current = {
+      x: e.clientX - position.x,
+      y: e.clientY - position.y,
+    };
+  };
+
+  const handleMouseMove = (e) => {
+    if (!dragging) return;
+    setPosition({
+      x: e.clientX - dragStartRef.current.x,
+      y: e.clientY - dragStartRef.current.y,
+    });
+  };
+
+  const handleMouseUp = () => setDragging(false);
+
+  useEffect(() => {
+    if (dragging) {
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
+    } else {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    }
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [dragging]);
+
   return (
-    <div className={`song-panel floating ${collapsed ? "collapsed" : ""}`}>
-      <div className="song-header" onClick={() => setCollapsed(!collapsed)}>
+    <div
+      className={`song-panel floating ${collapsed ? "collapsed" : ""}`}
+      style={{ top: position.y, left: position.x, position: "fixed", zIndex: 1000 }}
+    >
+      <div className="song-header" onMouseDown={handleMouseDown}>
         <h4>🎤 唱歌區</h4>
-        <button>{collapsed ? "▲ 展開" : "▼ 收起"}</button>
+        <button onClick={() => setCollapsed(!collapsed)}>
+          {collapsed ? "▲ 展開" : "▼ 收起"}
+        </button>
       </div>
 
       {!collapsed && (
@@ -161,9 +197,9 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
                   {[1, 2, 3, 4, 5].map((n) => (
                     <span
                       key={n}
-                      className={`star ${
-                        n <= (hoverScore || score) ? "active" : ""
-                      } ${scoreSent ? "disabled" : ""}`}
+                      className={`star ${n <= (hoverScore || score) ? "active" : ""} ${
+                        scoreSent ? "disabled" : ""
+                      }`}
                       onMouseEnter={() => !scoreSent && setHoverScore(n)}
                       onMouseLeave={() => !scoreSent && setHoverScore(0)}
                       onClick={() => !scoreSent && sendScore(n)}
@@ -179,9 +215,7 @@ export default function SongPanel({ socket, room, name, uploadSong }) {
         </>
       )}
 
-      {!collapsed && !recording && !playingSong && (
-        <p className="info-text">尚未開始唱歌</p>
-      )}
+      {!collapsed && !recording && !playingSong && <p className="info-text">尚未開始唱歌</p>}
     </div>
   );
 }

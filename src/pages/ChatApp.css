@@ -7,11 +7,12 @@ body {
   font-family: Arial, sans-serif;
   min-height: 100vh;
 }
-/* 聊天整個 layout */
+
+/* ===== 聊天整個 layout ===== */
 .chat-layout {
-  max-width: 1100px;    /* 固定最大寬度 */
-  width: 100%;          /* 滿版時不超過 max-width */
-  margin: 0 auto;       /* 置中 */
+  max-width: 1100px;
+  width: 100%;
+  margin: 0 auto;
   padding: 16px;
   display: flex;
   gap: 12px;
@@ -19,29 +20,28 @@ body {
 
 /* 左側聊天室 */
 .chat-left {
-  flex: 2;              /* 左側占比 */
+  flex: 2;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  height: 100vh;        /* 高度鎖定視窗高度 */
+  height: 100vh;
 }
 
-/* 右側列表 */
+/* 右側聊天室區域（YouTube + userlist） */
 .chat-right {
-  flex: 1;              /* 右側占比，比左側窄 */
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  max-width: 240px;     /* 固定右側最大寬度 */
+  max-width: 240px;
 }
 
-
-/* 訊息列表固定高度 */
+/* 訊息列表 */
 .message-list {
-  flex: 1 1 auto;        /* 填滿剩餘空間 */
-  min-height: 400px;     /* 桌面最小高度 */
-  max-height: 70vh;      /* 最大高度限制 */
-  overflow-y: auto;      /* 超出就滾動 */
+  flex: 1 1 auto;
+  min-height: 400px;
+  max-height: 70vh;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -51,14 +51,13 @@ body {
   background-color: #1a1a1a;
 }
 
-
 /* 標題 */
 .chat-title {
   font-size: 1.2rem;
   font-weight: bold;
 }
 
-/* 工具列（Hi / 離開 / YouTube 點播 / 唱歌） */
+/* 工具列 */
 .chat-toolbar {
   display: flex;
   align-items: center;
@@ -103,30 +102,16 @@ body {
   max-width: 75%;
   padding: 4px 8px;
   border-radius: 6px;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   word-break: break-word;
 }
 
-.chat-message.self {
-  background-color: #2a2a2a;
-  margin-left: auto;
-}
+.chat-message.self { background-color: #2a2a2a; margin-left: auto; }
+.chat-message.other { background-color: #222; }
+.chat-message.ai { background-color: #3d1a5f; }
+.chat-message.system { font-weight: bold; color: #ff9900; background: transparent; }
 
-.chat-message.other {
-  background-color: #222;
-}
-
-.chat-message.ai {
-  background-color: #3d1a5f;
-}
-
-.chat-message.system {
-  font-weight: bold;
-  color: #ff9900;
-  background: transparent;
-}
-
-/* ===== 頭像 ===== */
+/* 頭像 */
 .message-avatar,
 .user-avatar {
   width: 24px;
@@ -136,7 +121,7 @@ body {
   object-fit: cover;
 }
 
-/* ================= 輸入區 ================= */
+/* 聊天輸入 */
 .chat-input {
   display: flex;
   flex-wrap: wrap;
@@ -152,13 +137,8 @@ body {
   border-radius: 4px;
 }
 
-.chat-input input {
-  flex: 1;
-}
-
-.chat-input select {
-  flex: 0 0 140px;
-}
+.chat-input input { flex: 1; }
+.chat-input select { flex: 0 0 140px; }
 
 .chat-input button {
   padding: 6px 12px;
@@ -169,7 +149,7 @@ body {
   cursor: pointer;
 }
 
-/* ================= 右側 ================= */
+/* ===== 右側 ===== */
 .chat-right {
   width: 240px;
   display: flex;
@@ -177,7 +157,7 @@ body {
   gap: 10px;
 }
 
-/* ===== YouTube 播放浮窗 ===== */
+/* YouTube 播放器 */
 .video-player-float {
   background: #000;
   padding: 6px;
@@ -205,7 +185,7 @@ body {
   cursor: pointer;
 }
 
-/* ================= 使用者列表 ================= */
+/* 使用者列表 */
 .user-list {
   background-color: #1a1a1a;
   border-radius: 4px;
@@ -236,58 +216,45 @@ body {
 }
 
 .user-item:hover,
-.user-item.selected {
-  background-color: #2a2a2a;
-}
+.user-item.selected { background-color: #2a2a2a; }
 
-/* ================= 唱歌區 ================= */
-.song-panel-wrapper {
-  position: sticky;
-  top: 90px;
-  width: 300px;
-  z-index: 10;
-}
-
-.song-panel {
+/* ===== 唱歌區 inline 收合 ===== */
+.song-panel-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   background: #121212;
-  border-radius: 10px;
-  padding: 10px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  border-radius: 8px;
+  padding: 8px;
+  border: 1px solid #555;
 }
 
-/* ================= 手機版 ================= */
+.song-panel-inline.collapsed .song-body { display: none; }
+
+.song-header-inline {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
+.song-header-inline h4 { margin: 0; font-size: 0.95rem; }
+.song-header-inline button {
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+/* ===== 手機版 ===== */
 @media (max-width: 480px) {
-  .chat-layout {
-    flex-direction: column;
-    padding: 10px;
-  }
-
-  .chat-right {
-    width: 100%;
-  }
-
-  .user-list {
-    max-height: 120px;
-  }
-
-  .video-player-float iframe {
-    height: 90px;
-  }
-
-  .video-request input {
-    width: 140px;
-  }
-
-  .song-panel-wrapper {
-    width: 100%;
-  }
-
-  .chat-input input {
-    flex: 1 1 100%;
-  }
-
-  .message-list {
-    max-height: 40vh;
-    min-height: 200px;
-  }
+  .chat-layout { flex-direction: column; padding: 10px; }
+  .chat-right { width: 100%; }
+  .user-list { max-height: 120px; }
+  .video-player-float iframe { height: 90px; }
+  .video-request input { width: 140px; }
+  .chat-input input { flex: 1 1 100%; }
+  .message-list { max-height: 40vh; min-height: 200px; }
+  .song-panel-inline { width: 100%; }
 }
