@@ -169,18 +169,61 @@ export default function ChatApp() {
 
   return (
     <div className="chat-layout">
-      {/* 左側聊天室 */}
+      {/* 左側：聊天室 */}
       <div className="chat-left">
         <div className="chat-title">尋夢園男歡女愛聊天室</div>
 
-        {!joined ? (
-          <button onClick={loginGuest}>訪客登入</button>
-        ) : (
-          <div className="chat-toolbar">
-            <span>Hi, {name}</span>
-            <button onClick={leaveRoom}>離開</button>
-            <button onClick={() => setShowSongPanel(!showSongPanel)}>🎤 唱歌</button>
+        {/* 訊息列表 */}
+        <div className="message-list">
+          <MessageList
+            messages={messages}
+            name={name}
+            typing={typing}
+            messagesEndRef={messagesEndRef}
+          />
+        </div>
 
+        {/* 聊天輸入 */}
+        <div className="chat-input">
+          {/* 公聊 / 私聊選項 + 輸入框 + 發送按鈕 */}
+        </div>
+
+        {/* YouTube + 唱歌一行排列 */}
+        <div className="video-row">
+
+          {/* 唱歌區 */}
+          {showSongPanel && (
+            <div className={`song-panel-wrapper ${songCollapsed ? "collapsed" : ""}`}>
+              <button
+                className="song-collapse-btn"
+                onClick={() => setSongCollapsed(!songCollapsed)}
+              >
+                {songCollapsed ? "▶" : "▼"}
+              </button>
+
+              {!songCollapsed && (
+                <SongPanel
+                  socket={socket}
+                  room={room}
+                  name={name}
+                  uploadSong={uploadSong}
+                  userList={userList}
+                  chatMode={chatMode}
+                  setChatMode={setChatMode}
+                  target={target}
+                  setTarget={setTarget}
+                />
+              )}
+            </div>
+          )}
+
+          {/* YouTube 播放區 */}
+          <div className="video-player-wrapper">
+            <VideoPlayer
+              video={currentVideo}
+              extractVideoID={extractVideoID}
+              onClose={() => setCurrentVideo(null)}
+            />
             <div className="video-request">
               <input
                 value={videoUrl}
@@ -190,79 +233,36 @@ export default function ChatApp() {
               <button onClick={playVideo}>🎵 點播</button>
             </div>
           </div>
-        )}
-
-        {/* 訊息列表 */}
-        <MessageList messages={messages} name={name} typing={typing} messagesEndRef={messagesEndRef} />
-
-        {/* 聊天輸入 */}
-        <div className="chat-input">
-          <label>
-            <input type="radio" checked={chatMode === "public"} onChange={() => { setChatMode("public"); setTarget(""); }} /> 公開
-          </label>
-          <label>
-            <input type="radio" checked={chatMode === "publicTarget"} onChange={() => setChatMode("publicTarget")} /> 公開對象
-          </label>
-          <label>
-            <input type="radio" checked={chatMode === "private"} onChange={() => setChatMode("private")} /> 私聊
-          </label>
-
-          {chatMode !== "public" && (
-            <select value={target} onChange={(e) => setTarget(e.target.value)}>
-              <option value="">選擇對象</option>
-              {userList.filter((u) => u.name !== name).map((u) => (
-                <option key={u.id} value={u.name}>{u.name}</option>
-              ))}
-            </select>
-          )}
-
-          <input
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && send()}
-            placeholder="輸入訊息..."
-          />
-          <button onClick={send}>發送</button>
         </div>
       </div>
 
-      {/* 右側 */}
+      {/* 右側：使用者列表 */}
       <div className="chat-right">
-        <VideoPlayer video={currentVideo} extractVideoID={extractVideoID} onClose={() => setCurrentVideo(null)} />
-
         <div className={`user-list ${userListCollapsed ? "collapsed" : ""}`}>
-          <div className="user-list-header" onClick={() => setUserListCollapsed(!userListCollapsed)}>
+          <div
+            className="user-list-header"
+            onClick={() => setUserListCollapsed(!userListCollapsed)}
+          >
             在線：{userList.length}
           </div>
-
-          {!userListCollapsed && userList.map((u) => (
-            <div
-              key={u.id}
-              className={`user-item ${u.name === target ? "selected" : ""}`}
-              onClick={() => { setChatMode("private"); setTarget(u.name); }}
-            >
-              {aiAvatars[u.name] && <img src={aiAvatars[u.name]} alt={u.name} className="user-avatar" />}
-              {u.name} (Lv.{u.level})
-            </div>
-          ))}
+          {!userListCollapsed &&
+            userList.map((u) => (
+              <div
+                key={u.id}
+                className={`user-item ${u.name === target ? "selected" : ""}`}
+                onClick={() => {
+                  setChatMode("private");
+                  setTarget(u.name);
+                }}
+              >
+                {aiAvatars[u.name] && (
+                  <img src={aiAvatars[u.name]} alt={u.name} className="user-avatar" />
+                )}
+                {u.name} (Lv.{u.level})
+              </div>
+            ))}
         </div>
       </div>
-
-      {/* 浮動唱歌視窗 */}
-      {showSongPanel && (
-        <SongPanel
-          socket={socket}
-          room={room}
-          name={name}
-          uploadSong={uploadSong}
-          userList={userList}
-          chatMode={chatMode}
-          setChatMode={setChatMode}
-          target={target}
-          setTarget={setTarget}
-          onClose={() => setShowSongPanel(false)}
-        />
-      )}
     </div>
   );
 }
