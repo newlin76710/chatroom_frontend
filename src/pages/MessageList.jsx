@@ -46,8 +46,8 @@ export default function MessageList({ messages = [], name = "", typing = "", mes
               style={{
                 display: "flex",
                 justifyContent: isSelf ? "flex-end" : "flex-start",
-                alignItems: "center",
-                marginBottom: "4px",
+                alignItems: "flex-start",
+                marginBottom: "6px",
               }}
             >
               {/* Avatar */}
@@ -59,25 +59,36 @@ export default function MessageList({ messages = [], name = "", typing = "", mes
                 />
               )}
 
-              {/* 訊息內容 + 時間同一行 */}
+              {/* 訊息文字（含時間） */}
               <div
                 style={{
-                  display: "inline-flex",
-                  alignItems: "center",
+                  maxWidth: "75%",
                   color,
                   fontSize: "1rem",
-                  maxWidth: "100%",
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
+                  lineHeight: "1.4",
                 }}
               >
-                {tag && <span style={{ fontSize: "0.7rem", color: "#ffd36a", marginRight: "4px" }}>{tag}</span>}
+                {tag && (
+                  <span style={{ fontSize: "0.7rem", color: "#ffd36a", marginRight: "4px" }}>
+                    {tag}
+                  </span>
+                )}
                 <span style={{ fontWeight: "bold" }}>
                   {userName}{targetName ? ` → ${targetName}` : ""}：
                 </span>
-                <span style={{ marginLeft: "4px", marginRight: "6px" }}>{messageText}</span>
-                <span style={{ fontSize: "0.7rem", color: "#888", marginLeft: "auto", whiteSpace: "nowrap" }}>
+                <span style={{ marginLeft: "4px" }}>
+                  {messageText}
+                </span>
+                <span
+                  style={{
+                    fontSize: "0.7rem",
+                    color: "#888",
+                    marginLeft: "6px",
+                    whiteSpace: "nowrap",
+                  }}
+                >
                   {timestamp}
                 </span>
               </div>
