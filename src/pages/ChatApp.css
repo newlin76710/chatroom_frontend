@@ -30,7 +30,7 @@ body {
   font-weight: bold;
 }
 
-/* 工具列（Hi / 離開 / YouTube 點播） */
+/* 工具列（Hi / 離開 / YouTube 點播 / 唱歌） */
 .chat-toolbar {
   display: flex;
   align-items: center;
@@ -45,6 +45,25 @@ body {
   border-radius: 4px;
   color: #fff;
   cursor: pointer;
+}
+
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.song-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: none;
+  border-radius: 4px;
+  background: #6200ee;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.9rem;
 }
 
 /* YouTube 點播 */
