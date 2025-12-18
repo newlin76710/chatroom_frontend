@@ -1,21 +1,21 @@
 /* ===== BODY & 全域 ===== */
-html, body {
-  height: 100%;
+body {
   margin: 0;
   padding: 0;
   background-color: #121212;
   color: #fff;
   font-family: Arial, sans-serif;
+  min-height: 100vh;
 }
 
 /* ===== 最外層 Layout ===== */
 .chat-layout {
-  min-height: 100vh;
+  display: flex;
+  gap: 12px;
   max-width: 1100px;
   margin: 0 auto;
   padding: 16px;
-  display: flex;
-  gap: 12px;
+  min-height: 100vh;
 }
 
 /* ================= 左側：聊天室 ================= */
@@ -24,6 +24,7 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  height: 100%;
 }
 
 /* 標題 */
@@ -32,7 +33,7 @@ html, body {
   font-weight: bold;
 }
 
-/* 工具列（Hi / 離開 / YouTube 點播） */
+/* 工具列（Hi / 離開 / YouTube 點播 / 唱歌） */
 .chat-toolbar {
   display: flex;
   align-items: center;
@@ -68,8 +69,9 @@ html, body {
 
 /* ================= 訊息區 ================= */
 .message-list {
-  height: 400px;           /* 桌面固定高度 */
-  max-height: 60vh;        /* 手機版保護 */
+  flex: 1;              /* 佔滿剩餘高度 */
+  min-height: 400px;    /* 桌面固定高度 */
+  max-height: 60vh;     /* 手機版高度限制 */
   overflow-y: auto;
   border-radius: 4px;
   border: 1px solid #555;
@@ -83,7 +85,8 @@ html, body {
 /* ===== 訊息 ===== */
 .message-row {
   display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
+  margin-bottom: 4px;
 }
 
 .chat-message {
@@ -272,14 +275,9 @@ html, body {
   .chat-input input {
     flex: 1 1 100%;
   }
-}
 
-/* ================= 動畫 ================= */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(5px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.fade-in {
-  animation: fadeIn 0.3s ease-out;
+  .message-list {
+    max-height: 40vh;
+    min-height: 200px;
+  }
 }
