@@ -247,6 +247,32 @@ body {
   font-size: 0.85rem;
 }
 
+.exp-tip-inline, .levelup-tip-inline {
+  display: inline-block;
+  margin-left: 5px;
+  position: relative;
+}
+
+.exp-tip, .levelup-tip {
+  position: absolute;
+  left: 100%; /* 飄字在右邊 */
+  top: -2px;
+  font-size: 0.9em;
+  color: yellow;
+  font-weight: bold;
+  animation: fadeUp 1s ease-out forwards;
+}
+
+.levelup-tip {
+  color: orange;
+  font-size: 1em;
+}
+
+@keyframes fadeUp {
+  0% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-20px); }
+}
+
 /* ===== 手機版 ===== */
 @media (max-width: 480px) {
   .chat-layout { flex-direction: column; padding: 10px; }

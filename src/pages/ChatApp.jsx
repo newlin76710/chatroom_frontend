@@ -3,6 +3,7 @@ import { io } from "socket.io-client";
 import MessageList from "./MessageList";
 import VideoPlayer from "./VideoPlayer";
 import SongPanel from "./SongPanel";
+import UserList from "./UserList";
 import { aiAvatars } from "./aiConfig";
 import "./ChatApp.css";
 
@@ -21,15 +22,17 @@ const safeText = (v) => {
   return String(v);
 };
 
-// 全局 socket 保證 Hot Reload 不重複建立
+const formatLv = (lv) => String(lv).padStart(2, "0");
+
 let globalSocket = null;
-if (!globalSocket) {
-  globalSocket = io(BACKEND);
-}
+if (!globalSocket) globalSocket = io(BACKEND);
 
 export default function ChatApp() {
   const [room] = useState("public");
   const [name, setName] = useState("");
+  const [level, setLevel] = useState(1);
+  const [exp, setExp] = useState(0);
+  const [gender, setGender] = useState("女");
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [joined, setJoined] = useState(false);
@@ -41,16 +44,99 @@ export default function ChatApp() {
   const [chatMode, setChatMode] = useState("public");
   const [userListCollapsed, setUserListCollapsed] = useState(false);
   const [showSongPanel, setShowSongPanel] = useState(false);
+  const [cooldown, setCooldown] = useState(false);
+  const [placeholder, setPlaceholder] = useState("輸入訊息...");
   const messagesEndRef = useRef(null);
-
   const socket = globalSocket;
+  const [expTips, setExpTips] = useState([]);
+  const [levelUpTips, setLevelUpTips] = useState([]);
 
-  // 自動捲動
+  // --- 初始化 localStorage ---
+  useEffect(() => {
+    const storedName = localStorage.getItem("name");
+    const storedLevel = parseInt(localStorage.getItem("level")) || 1;
+    const storedExp = parseInt(localStorage.getItem("exp")) || 0;
+    const storedGender = localStorage.getItem("gender") || "女";
+
+    if (storedName) setName(safeText(storedName));
+    setLevel(storedLevel);
+    setExp(storedExp);
+    setGender(storedGender);
+  }, []);
+
+  // --- updateUsers 處理 ---
+  useEffect(() => {
+    const handleUpdateUsers = (list = []) => {
+      if (!Array.isArray(list)) return;
+
+      setUserList(
+        list
+          .map((u, i) => ({
+            id: u?.id || i,
+            name: safeText(u?.name || u?.user),
+            level: u?.level || 1,
+            exp: u?.exp || 0,
+            gender: u?.gender || "女",
+            type: u?.type || "guest",
+            avatar: u?.avatar && u.avatar !== "" ? u.avatar : aiAvatars[u?.name] || "/avatars/g01.gif",
+          }))
+          .sort((a, b) => {
+            // 真人 (account) 優先
+            if (a.type === "account" && b.type !== "account") return -1;
+            if (a.type !== "account" && b.type === "account") return 1;
+            return b.level - a.level;
+          })
+      );
+
+      const me = list.find((u) => safeText(u.name || u.user) === name);
+      if (!me) return;
+
+      // 更新 LV
+      if (me.level > level) {
+        setLevel(me.level || 1);
+        setLevelUpTips((s) => [...s, { id: Date.now(), value: "LV UP!" }]);
+        localStorage.setItem("level", me.level || 1);
+      }
+
+      // 更新 EXP
+      if (me.exp > exp) {
+        setExp(me.exp || 0);
+        setExpTips((s) => [...s, { id: Date.now(), value: `+${me.exp - exp}` }]);
+        localStorage.setItem("exp", me.exp || 0);
+      }
+
+      // 更新 gender，僅在與現有 gender 不同時更新
+      if (me.gender && me.gender !== gender) {
+        setGender(me.gender);
+        localStorage.setItem("gender", me.gender);
+      }
+    };
+
+    socket.on("updateUsers", handleUpdateUsers);
+    return () => socket.off("updateUsers", handleUpdateUsers);
+  }, [socket, name, level, exp, gender]);
+
+  // --- 移除飄字 ---
+  useEffect(() => {
+    if (expTips.length > 0) {
+      const timer = setTimeout(() => setExpTips((s) => s.slice(1)), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [expTips]);
+
+  useEffect(() => {
+    if (levelUpTips.length > 0) {
+      const timer = setTimeout(() => setLevelUpTips((s) => s.slice(1)), 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [levelUpTips]);
+
+  // --- 自動捲動 ---
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Socket 事件註冊（只註冊一次）
+  // --- Socket 事件 ---
   useEffect(() => {
     const handleMessage = (m) => {
       if (!m) return;
@@ -62,7 +148,7 @@ export default function ChatApp() {
           user: { name: safeText(m.user?.name) },
           target: safeText(m.target),
           mode: safeText(m.mode),
-          timestamp: m.timestamp || new Date().toLocaleTimeString(), // 保險用
+          timestamp: m.timestamp || new Date().toLocaleTimeString(),
         },
       ]);
     };
@@ -71,61 +157,55 @@ export default function ChatApp() {
       setMessages((s) => [...s, { user: { name: "系統" }, message: safeText(m) }]);
     };
 
-    const handleUpdateUsers = (list = []) => {
-      if (!Array.isArray(list)) return;
-      setUserList(
-        list.map((u, i) => ({
-          id: u?.id || i,
-          name: safeText(u?.name || u?.user),
-          level: u?.level || 1,
-        }))
-      );
-    };
-
     const handleVideoUpdate = (v) => setCurrentVideo(v || null);
 
     socket.on("message", handleMessage);
     socket.on("systemMessage", handleSystemMessage);
-    socket.on("updateUsers", handleUpdateUsers);
     socket.on("videoUpdate", handleVideoUpdate);
 
     return () => {
       socket.off("message", handleMessage);
       socket.off("systemMessage", handleSystemMessage);
-      socket.off("updateUsers", handleUpdateUsers);
       socket.off("videoUpdate", handleVideoUpdate);
     };
   }, [socket]);
 
-  // 自動登入（Hot Reload 不重複觸發）
+  // --- 自動 joinRoom ---
   useEffect(() => {
-    if (joined) return; // 避免 Hot Reload 重複 join
-    const storedName = localStorage.getItem("name");
+    if (joined || !name) return;
     const token = localStorage.getItem("token") || localStorage.getItem("guestToken");
     const type = localStorage.getItem("type") || "guest";
-    if (!storedName) return;
-
-    const safeName = safeText(storedName);
-    setName(safeName);
-    socket.emit("joinRoom", { room, user: { name: safeName, type, token } });
+    socket.emit("joinRoom", { room, user: { name, type, token } });
     setJoined(true);
-  }, [room, socket, joined]);
+  }, [room, socket, joined, name]);
 
+  // --- 訪客登入 ---
   const loginGuest = async () => {
-    const res = await fetch(`${BACKEND}/auth/guest`, { method: "POST" });
-    const data = await res.json();
-    const safeName = safeText(data.name);
+    try {
+      const res = await fetch(`${BACKEND}/auth/guest`, { method: "POST" });
+      const data = await res.json();
+      const safeName = safeText(data.name);
 
-    localStorage.setItem("guestToken", data.guestToken);
-    localStorage.setItem("name", safeName);
-    localStorage.setItem("type", "guest");
+      localStorage.setItem("guestToken", data.guestToken);
+      localStorage.setItem("name", safeName);
+      localStorage.setItem("type", "guest");
+      localStorage.setItem("level", data.level || 1);
+      localStorage.setItem("exp", data.exp || 0);
+      localStorage.setItem("gender", data.gender || "女");
 
-    setName(safeName);
-    socket.emit("joinRoom", {
-      room,
-      user: { name: safeName, type: "guest", token: data.guestToken },
-    });
-    setJoined(true);
+      setName(safeName);
+      setLevel(data.level || 1);
+      setExp(data.exp || 0);
+      setGender(data.gender || "女");
+
+      socket.emit("joinRoom", {
+        room,
+        user: { name: safeName, type: "guest", token: data.guestToken },
+      });
+      setJoined(true);
+    } catch (err) {
+      alert("訪客登入失敗：" + err.message);
+    }
   };
 
   const leaveRoom = () => {
@@ -134,12 +214,11 @@ export default function ChatApp() {
     window.location.href = "/login";
   };
 
+  // --- 發訊息 ---
   const send = () => {
-    if (!text.trim()) return;
-    if (chatMode !== "public" && !target) return;
+    if (cooldown || !text.trim() || (chatMode !== "public" && !target)) return;
 
-    const now = new Date();
-    const timestamp = now.toLocaleTimeString(); // 或 toLocaleString() 顯示日期+時間
+    const timestamp = new Date().toLocaleTimeString();
 
     socket.emit("message", {
       room,
@@ -147,11 +226,17 @@ export default function ChatApp() {
       user: { name },
       target: target || "",
       mode: chatMode,
-      timestamp, // 新增欄位
+      timestamp,
     });
-    setText("");
-  };
 
+    setText("");
+    setCooldown(true);
+    setPlaceholder("請等待 3 秒後再發送…");
+    setTimeout(() => {
+      setCooldown(false);
+      setPlaceholder("輸入訊息...");
+    }, 3000);
+  };
 
   const extractVideoID = (url) => {
     if (!url) return null;
@@ -188,7 +273,15 @@ export default function ChatApp() {
           <button onClick={loginGuest}>訪客登入</button>
         ) : (
           <div className="chat-toolbar">
-            <span>Hi, {name}</span>
+            <span style={{ position: "relative" }}>
+              Hi [Lv.{formatLv(level)}] {name} ({gender}) EXP:{exp}
+              <span className="exp-tip-inline">
+                {expTips.map((tip) => <span key={tip.id} className="exp-tip">{tip.value}</span>)}
+              </span>
+              <span className="levelup-tip-inline">
+                {levelUpTips.map((tip) => <span key={tip.id} className="levelup-tip">{tip.value}</span>)}
+              </span>
+            </span>
             <button onClick={leaveRoom}>離開</button>
 
             <div className="video-request">
@@ -225,14 +318,14 @@ export default function ChatApp() {
               ))}
             </select>
           )}
-
           <input
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && send()}
-            placeholder="輸入訊息..."
+            placeholder={placeholder}
+            disabled={cooldown}
           />
-          <button onClick={send}>發送</button>
+          <button onClick={send} disabled={cooldown}>發送</button>
         </div>
 
         {showSongPanel && (
@@ -257,22 +350,14 @@ export default function ChatApp() {
           <VideoPlayer video={currentVideo} extractVideoID={extractVideoID} onClose={() => setCurrentVideo(null)} />
         </div>
 
-        <div className={`user-list ${userListCollapsed ? "collapsed" : ""}`}>
-          <div className="user-list-header" onClick={() => setUserListCollapsed(!userListCollapsed)}>
-            在線：{userList.length}
-          </div>
-          {!userListCollapsed &&
-            userList.map((u) => (
-              <div
-                key={u.id}
-                className={`user-item ${u.name === target ? "selected" : ""}`}
-                onClick={() => { setChatMode("private"); setTarget(u.name); }}
-              >
-                {aiAvatars[u.name] && <img src={aiAvatars[u.name]} alt={u.name} className="user-avatar" />}
-                {u.name} (Lv.{u.level})
-              </div>
-            ))}
-        </div>
+        <UserList
+          userList={userList}
+          target={target}
+          setTarget={setTarget}
+          setChatMode={setChatMode}
+          userListCollapsed={userListCollapsed}
+          setUserListCollapsed={setUserListCollapsed}
+        />
       </div>
     </div>
   );

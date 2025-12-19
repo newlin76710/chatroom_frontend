@@ -32,8 +32,8 @@ export default function MessageList({ messages = [], name = "", typing = "", mes
           let color = "#eee";
           if (isSystem) color = "#ff9900";
           else if (isSelf) color = "#fff";
-          else if (profile?.gender === "male") color = "#006633";
-          else if (profile?.gender === "female") color = "#ff66aa";
+          else if (profile?.gender === "男") color = "#006633";
+          else if (profile?.gender === "女") color = "#ff66aa";
           else if (profile?.color) color = profile.color;
 
           // 標籤

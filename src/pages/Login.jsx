@@ -1,6 +1,7 @@
 // Login.jsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { aiAvatars } from "./aiConfig"; // AI 預設頭像列表
 
 const BACKEND = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
 
@@ -32,9 +33,10 @@ export default function Login() {
   const [mode, setMode] = useState("guest"); // guest | login | register
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [gender, setGender] = useState("female");
+  const [gender, setGender] = useState("女");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [avatar, setAvatar] = useState(""); // 新增 avatar 狀態
 
   // 訪客登入
   const guestLogin = async () => {
@@ -75,6 +77,7 @@ export default function Login() {
       localStorage.setItem("token", data.token);
       localStorage.setItem("name", data.name);
       localStorage.setItem("gender", data.gender);
+      localStorage.setItem("avatar", data.avatar || ""); // 儲存 avatar
       localStorage.setItem("last_login", data.last_login);
       localStorage.setItem("type", "account");
 
@@ -92,7 +95,7 @@ export default function Login() {
       const res = await fetch(`${BACKEND}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password, gender, phone, email }),
+        body: JSON.stringify({ username, password, gender, phone, email, avatar }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "註冊失敗");
@@ -134,10 +137,7 @@ export default function Login() {
 
       {/* 性別選擇 */}
       <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
-        {[
-          { v: "female", label: "♀ 女生" },
-          { v: "male", label: "♂ 男生" },
-        ].map((g) => (
+        {[{ v: "女", label: "♀ 女生" }, { v: "男", label: "♂ 男生" }].map((g) => (
           <label
             key={g.v}
             style={{
@@ -195,6 +195,28 @@ export default function Login() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
+
+          {/* 頭像選擇 */}
+          <div style={{ margin: "10px 0" }}>
+            <div style={{ marginBottom: 6, color: "#aaa" }}>選擇頭像：</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {Object.entries(aiAvatars).map(([name, url]) => (
+                <img
+                  key={name}
+                  src={url}
+                  alt={name}
+                  style={{
+                    width: 50,
+                    height: 50,
+                    borderRadius: "50%",
+                    border: avatar === url ? "2px solid #ff66aa" : "2px solid transparent",
+                    cursor: "pointer",
+                  }}
+                  onClick={() => setAvatar(url)}
+                />
+              ))}
+            </div>
+          </div>
         </>
       )}
 
