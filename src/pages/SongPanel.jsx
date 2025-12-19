@@ -2,167 +2,182 @@ import { useEffect, useRef, useState } from "react";
 import "./SongPanel.css";
 
 export default function SongPanel({ socket, room, name }) {
-  const localAudioRef = useRef(null);
-  const peersRef = useRef({}); // { socketId: RTCPeerConnection }
+  const localStreamRef = useRef(null);
+  const peersRef = useRef({}); // peerId -> RTCPeerConnection
+  const remoteAudioRefs = useRef({}); // peerId -> audio element
 
   const [recording, setRecording] = useState(false);
   const [liveSingers, setLiveSingers] = useState([]);
   const [volume, setVolume] = useState(1);
   const [muted, setMuted] = useState(false);
 
-  const [collapsed, setCollapsed] = useState(false);
-  const [position, setPosition] = useState({ x: 50, y: 100 });
-  const [dragging, setDragging] = useState(false);
-  const dragStartRef = useRef({ x: 0, y: 0 });
-
-  let localStream = useRef(null);
-
-  // --- WebRTC 初始化 ---
-  const initWebRTC = async () => {
-    localStream.current = await navigator.mediaDevices.getUserMedia({ audio: true });
-    localAudioRef.current.srcObject = localStream.current;
-
-    socket.emit("join-room", room);
-
-    // 其他人進來時建立 PeerConnection
-    socket.on("offer", async ({ offer, from }) => {
-      const pc = createPeerConnection(from);
-      await pc.setRemoteDescription(new RTCSessionDescription(offer));
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      socket.emit("answer", { room, answer, to: from });
+  // --- 建立 RTCPeerConnection ---
+  const createPeerConnection = (peerId) => {
+    const pc = new RTCPeerConnection({
+      iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
     });
 
-    socket.on("answer", async ({ answer, from }) => {
-      const pc = peersRef.current[from];
-      if (pc) await pc.setRemoteDescription(new RTCSessionDescription(answer));
-    });
+    // 把本地音訊加入連線
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(track => pc.addTrack(track, localStreamRef.current));
+    }
 
-    socket.on("ice-candidate", ({ candidate, from }) => {
-      const pc = peersRef.current[from];
-      if (pc && candidate) pc.addIceCandidate(new RTCIceCandidate(candidate));
-    });
-
-    socket.on("user-left", ({ socketId }) => {
-      if (peersRef.current[socketId]) {
-        peersRef.current[socketId].close();
-        delete peersRef.current[socketId];
-      }
-      setLiveSingers((prev) => prev.filter((s) => s !== socketId));
-    });
-  };
-
-  const createPeerConnection = (socketId) => {
-    const pc = new RTCPeerConnection();
-
-    // 加入本地音訊
-    localStream.current.getTracks().forEach((track) => pc.addTrack(track, localStream.current));
-
-    // 收到遠端音訊時 attach
+    // 接收遠端音訊
     pc.ontrack = (event) => {
-      const remoteAudio = document.getElementById(`remoteAudio-${socketId}`);
-      if (remoteAudio) {
-        remoteAudio.srcObject = event.streams[0];
-        remoteAudio.play().catch(() => {});
+      let audioEl = remoteAudioRefs.current[peerId];
+      if (!audioEl) {
+        audioEl = new Audio();
+        audioEl.autoplay = true;
+        audioEl.volume = muted ? 0 : volume;
+        remoteAudioRefs.current[peerId] = audioEl;
       }
-      setLiveSingers((prev) => [...new Set([...prev, socketId])]);
+      audioEl.srcObject = event.streams[0];
     };
 
     // ICE candidate
     pc.onicecandidate = (event) => {
       if (event.candidate) {
-        socket.emit("ice-candidate", { room, candidate: event.candidate, to: socketId });
+        socket.emit("ice-candidate", { to: peerId, candidate: event.candidate });
       }
     };
 
-    peersRef.current[socketId] = pc;
     return pc;
   };
 
+  // --- 開始唱歌 ---
   const startRecord = async () => {
     try {
-      await initWebRTC();
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      localStreamRef.current = stream;
+
       setRecording(true);
+      socket.emit("start-singing", { room, singer: name });
+
+      // 建立與現有房間使用者的 peer
+      const users = await new Promise(resolve => {
+        socket.emit("getRoomUsers", room, resolve);
+      });
+
+      users.forEach(u => {
+        if (u.id === socket.id) return; // 忽略自己
+        if (!peersRef.current[u.id]) {
+          const pc = createPeerConnection(u.id);
+          peersRef.current[u.id] = pc;
+
+          // 建立 offer
+          pc.createOffer().then(offer => {
+            pc.setLocalDescription(offer);
+            socket.emit("offer", { offer, to: u.id });
+          });
+        }
+      });
     } catch (err) {
-      console.error(err);
+      console.error("取得麥克風失敗", err);
       alert("無法取得麥克風權限");
     }
   };
 
+  // --- 停止唱歌 ---
   const stopRecord = () => {
-    localStream.current?.getTracks().forEach((t) => t.stop());
-    Object.values(peersRef.current).forEach((pc) => pc.close());
-    peersRef.current = {};
+    localStreamRef.current?.getTracks().forEach(t => t.stop());
+    localStreamRef.current = null;
     setRecording(false);
+    socket.emit("stop-singing", { room, singer: name });
+
+    Object.values(peersRef.current).forEach(pc => pc.close());
+    peersRef.current = {};
+    remoteAudioRefs.current = {};
     setLiveSingers([]);
   };
 
-  // 拖動事件
-  const handleMouseDown = (e) => {
-    setDragging(true);
-    dragStartRef.current = { x: e.clientX - position.x, y: e.clientY - position.y };
-  };
-  const handleMouseMove = (e) => {
-    if (!dragging) return;
-    setPosition({ x: e.clientX - dragStartRef.current.x, y: e.clientY - dragStartRef.current.y });
-  };
-  const handleMouseUp = () => setDragging(false);
+  // --- WebRTC 信令 ---
   useEffect(() => {
-    if (dragging) {
-      window.addEventListener("mousemove", handleMouseMove);
-      window.addEventListener("mouseup", handleMouseUp);
-    } else {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-    }
+    // 收到 offer
+    socket.on("offer", async ({ offer, from }) => {
+      if (peersRef.current[from]) return;
+      const pc = createPeerConnection(from);
+      peersRef.current[from] = pc;
+
+      await pc.setRemoteDescription(offer);
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+
+      socket.emit("answer", { answer, to: from });
+    });
+
+    // 收到 answer
+    socket.on("answer", async ({ answer, from }) => {
+      const pc = peersRef.current[from];
+      if (!pc) return;
+      await pc.setRemoteDescription(answer);
+    });
+
+    // 收到 ICE candidate
+    socket.on("ice-candidate", async ({ candidate, from }) => {
+      const pc = peersRef.current[from];
+      if (pc && candidate) {
+        try {
+          await pc.addIceCandidate(candidate);
+        } catch (err) {
+          console.warn("addIceCandidate 失敗", err);
+        }
+      }
+    });
+
+    // 更新房間唱歌狀態
+    socket.on("user-start-singing", ({ singer }) => {
+      setLiveSingers(prev => [...new Set([...prev, singer])]);
+    });
+    socket.on("user-stop-singing", ({ singer }) => {
+      setLiveSingers(prev => prev.filter(s => s !== singer));
+    });
+
     return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
+      socket.off("offer");
+      socket.off("answer");
+      socket.off("ice-candidate");
+      socket.off("user-start-singing");
+      socket.off("user-stop-singing");
     };
-  }, [dragging]);
+  }, [socket, muted, volume]);
+
+  // --- 音量控制 ---
+  useEffect(() => {
+    Object.values(remoteAudioRefs.current).forEach(a => a.volume = muted ? 0 : volume);
+  }, [volume, muted]);
 
   return (
-    <div
-      className={`song-panel floating ${collapsed ? "collapsed" : ""}`}
-      style={{ top: position.y, left: position.x }}
-    >
-      <div className="song-header" onMouseDown={handleMouseDown}>
-        <h4>🎤 唱歌區</h4>
-        <button onClick={() => setCollapsed(!collapsed)}>
-          {collapsed ? "▲ 展開" : "▼ 收起"}
+    <div className="song-panel">
+      <h4>🎤 唱歌區</h4>
+
+      {liveSingers.length > 0 && (
+        <div>
+          <strong>正在唱歌：</strong>
+          {liveSingers.join(", ")}
+        </div>
+      )}
+
+      <div>
+        <label>
+          音量：
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            value={muted ? 0 : volume}
+            onChange={e => setVolume(parseFloat(e.target.value))}
+          />
+        </label>
+        <button onClick={() => setMuted(!muted)}>
+          {muted ? "解除靜音" : "靜音"}
         </button>
       </div>
 
-      {!collapsed && (
-        <>
-          <div className="volume-control">
-            <label>
-              音量：
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={muted ? 0 : volume}
-                onChange={(e) => setVolume(parseFloat(e.target.value))}
-              />
-            </label>
-            <button onClick={() => setMuted(!muted)}>
-              {muted ? "解除靜音" : "靜音"}
-            </button>
-          </div>
-
-          {!recording ? (
-            <button onClick={startRecord}>開始唱歌</button>
-          ) : (
-            <button onClick={stopRecord}>結束唱歌</button>
-          )}
-
-          <audio ref={localAudioRef} autoPlay muted />
-          {liveSingers.map((s) => (
-            <audio key={s} id={`remoteAudio-${s}`} autoPlay />
-          ))}
-        </>
+      {!recording ? (
+        <button onClick={startRecord}>開始唱歌</button>
+      ) : (
+        <button onClick={stopRecord}>結束唱歌</button>
       )}
     </div>
   );
