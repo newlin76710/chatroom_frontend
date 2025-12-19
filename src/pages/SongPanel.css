@@ -1,7 +1,8 @@
+/* ===== Song Panel 基本樣式 ===== */
 .song-panel {
   position: fixed;
   top: 40%;
-  left: 20px; /* 左側中間偏上一點 */
+  left: 20px;
   transform: translateY(-50%);
   width: 300px;
   background: #121212;
@@ -19,6 +20,7 @@
   overflow: hidden;
 }
 
+/* ===== 標題欄 ===== */
 .song-header {
   display: flex;
   justify-content: space-between;
@@ -57,6 +59,7 @@
   background: #7e39ff;
 }
 
+/* ===== 正在播放歌曲區 ===== */
 .song-playing {
   margin-top: 12px;
   padding: 10px;
@@ -65,6 +68,12 @@
   border: 1px solid #333;
 }
 
+.song-playing audio {
+  width: 100%;
+  margin-top: 6px;
+}
+
+/* ===== 打分區 ===== */
 .score-wrapper {
   display: flex;
   align-items: center;
@@ -111,11 +120,7 @@
   color: #ffd700;
 }
 
-.song-playing audio {
-  width: 100%;
-  margin-top: 6px;
-}
-
+/* ===== 尚未開始唱歌 ===== */
 .info-text {
   margin-top: 8px;
   font-size: 14px;
@@ -123,7 +128,61 @@
   text-align: center;
 }
 
-/* 手機版響應式 */
+/* ===== 正在唱歌列表 + 音量條 ===== */
+.live-singers {
+  margin: 8px 0;
+}
+
+.singer-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.singer-volume-bar {
+  flex: 1;
+  height: 6px;
+  background-color: #444;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.singer-volume-fill {
+  height: 100%;
+  background-color: #00ff88;
+  border-radius: 3px;
+  transition: width 0.1s linear;
+}
+
+/* ===== 音量控制區 ===== */
+.volume-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.volume-control input[type="range"] {
+  flex: 1;
+}
+
+.volume-control button {
+  background: #6200ee;
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  padding: 2px 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.volume-control button:hover {
+  background: #7e39ff;
+}
+
+/* ===== 手機響應式 ===== */
 @media (max-width: 480px) {
   .song-panel {
     width: 200px;
@@ -143,5 +202,8 @@
   .song-panel button {
     font-size: 0.75rem;
     padding: 4px 8px;
+  }
+  .singer-item {
+    font-size: 12px;
   }
 }

@@ -272,15 +272,49 @@ export default function ChatApp() {
     setVideoUrl("");
   };
 
-  const uploadSong = async (blob) => {
-    try {
-      const formData = new FormData();
-      formData.append("file", blob, `${name}_song.webm`);
-      await fetch(`${BACKEND}/uploadSong`, { method: "POST", body: formData });
-    } catch (err) {
-      console.error("上傳錄音失敗：", err);
-    }
-  };
+  async function uploadSong(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+
+      reader.onloadend = async () => {
+        try {
+          const base64 = reader.result.split(",")[1];
+
+          const res = await fetch(
+            `${import.meta.env.VITE_BACKEND_URL || "http://localhost:10000"}/song/upload`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                audioBase64: base64,
+                singer: name, // ← 用目前登入者名稱
+              }),
+            }
+          );
+
+          if (!res.ok) {
+            console.error("uploadSong http error", res.status);
+            return reject("http error");
+          }
+
+          const data = await res.json();
+          console.log("🎵 uploadSong success:", data.url);
+
+          // 🔥 關鍵：一定要回傳字串
+          resolve(data.url); // "/songs/xxxx.webm"
+        } catch (err) {
+          console.error("uploadSong failed", err);
+          reject(err);
+        }
+      };
+
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
 
   return (
     <div className="chat-layout">
