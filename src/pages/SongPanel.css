@@ -181,6 +181,23 @@
   background: #7e39ff;
 }
 
+.song-panel button:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.mic-meter {
+  width: 100%;
+  height: 8px;
+  background: #222;
+  margin: 6px 0;
+}
+.mic-bar {
+  height: 100%;
+  background: #4caf50;
+  transition: width .1s;
+}
+
 /* ===== 手機響應式 ===== */
 @media (max-width: 480px) {
   .song-panel {

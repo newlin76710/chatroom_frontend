@@ -2,82 +2,101 @@ import { useEffect, useRef, useState } from "react";
 import "./SongPanel.css";
 
 export default function SongPanel({ socket, room, name }) {
-  const localStreamRef = useRef(null);
   const pcRef = useRef(null);
+  const localStreamRef = useRef(null);
   const audioRef = useRef(null);
 
   const [recording, setRecording] = useState(false);
-  const [canSing, setCanSing] = useState(true);
-  const [score, setScore] = useState(0);       // 自己給的分
+  const [currentSinger, setCurrentSinger] = useState(null);
+  const [queue, setQueue] = useState([]);
+  const [isListener, setIsListener] = useState(false);
+
+  // 評分
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [score, setScore] = useState(0);
   const [hoverScore, setHoverScore] = useState(0);
   const [scoreSent, setScoreSent] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(0);
-  const [avgScore, setAvgScore] = useState(null); // 平均分
   const timerRef = useRef(null);
 
-  const [volume, setVolume] = useState(1);
-  const [muted, setMuted] = useState(false);
+  // 音量
+  const [micLevel, setMicLevel] = useState(0);
 
-  // ----- 開始唱歌 -----
-  const startRecord = async () => {
-    if (!canSing) return;
+  /* ========================
+     WebRTC（所有人都能聽）
+  ======================== */
+  const ensurePC = () => {
+    if (pcRef.current) return;
 
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      localStreamRef.current = stream;
+    pcRef.current = new RTCPeerConnection({
+      iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+    });
 
-      pcRef.current = new RTCPeerConnection({
-        iceServers: [
-          { urls: "stun:stun.l.google.com:19302" },
-          { urls: "stun:stun1.l.google.com:19302" }
-        ]
-      });
+    pcRef.current.ontrack = (e) => {
+      audioRef.current.srcObject = e.streams[0];
+      audioRef.current.play().catch(() => { });
+      setIsListener(true); // ⭐ 一定要有
+      socket.emit("listener-ready", { room });
+    };
 
-      stream.getTracks().forEach(track => pcRef.current.addTrack(track, stream));
-
-      pcRef.current.ontrack = (event) => {
-        audioRef.current.srcObject = event.streams[0];
-        audioRef.current.volume = muted ? 0 : volume;
-        audioRef.current.play().catch(() => {});
-      };
-
-      pcRef.current.onicecandidate = (event) => {
-        if (event.candidate) {
-          socket.emit("webrtc-candidate", { room, candidate: event.candidate });
-        }
-      };
-
-      const offer = await pcRef.current.createOffer();
-      await pcRef.current.setLocalDescription(offer);
-      socket.emit("webrtc-offer", { room, offer });
-
-      setRecording(true);
-      setCanSing(false);
-      socket.emit("start-singing", { room, singer: name });
-    } catch (err) {
-      console.error("取得麥克風失敗", err);
-      alert("無法取得麥克風權限");
-    }
+    pcRef.current.onicecandidate = (e) => {
+      if (e.candidate) {
+        socket.emit("webrtc-candidate", { room, candidate: e.candidate });
+      }
+    };
   };
 
-  // ----- 結束唱歌 -----
-  const stopRecord = () => {
-    if (pcRef.current) {
-      pcRef.current.close();
-      pcRef.current = null;
-    }
+  useEffect(() => {
+    ensurePC();
+  }, []);
+
+  /* ========================
+     排隊 & 開唱
+  ======================== */
+  const joinQueue = () => {
+    socket.emit("join-queue", { room, name });
+  };
+
+  const startSinging = async () => {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    localStreamRef.current = stream;
+
+    stream.getTracks().forEach(t => pcRef.current.addTrack(t, stream));
+
+    // 麥克風音量
+    const ctx = new AudioContext();
+    const src = ctx.createMediaStreamSource(stream);
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 256;
+    src.connect(analyser);
+
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    const tick = () => {
+      analyser.getByteFrequencyData(data);
+      const avg = data.reduce((a, b) => a + b, 0) / data.length;
+      setMicLevel(avg);
+      if (recording) requestAnimationFrame(tick);
+    };
+    setRecording(true);
+    tick();
+
+    const offer = await pcRef.current.createOffer();
+    await pcRef.current.setLocalDescription(offer);
+    socket.emit("webrtc-offer", { room, offer });
+  };
+
+  const stopSinging = () => {
     localStreamRef.current?.getTracks().forEach(t => t.stop());
     localStreamRef.current = null;
-
     setRecording(false);
-    socket.emit("stop-singing", { room, singer: name });
+    socket.emit("stop-singing", { room });
 
-    // 開始 15 秒評分倒數
     setTimeLeft(15);
     setScoreSent(false);
   };
 
-  // ----- 評分倒數 -----
+  /* ========================
+     評分
+  ======================== */
   useEffect(() => {
     if (timeLeft <= 0) return;
     timerRef.current = setTimeout(() => setTimeLeft(t => t - 1), 1000);
@@ -88,37 +107,31 @@ export default function SongPanel({ socket, room, name }) {
     if (scoreSent) return;
     setScore(n);
     setScoreSent(true);
-    setHoverScore(0);
     socket.emit("scoreSong", { room, score: n });
   };
 
-  // ----- WebRTC & 唱歌事件 -----
+  /* ========================
+     Socket 事件
+  ======================== */
   useEffect(() => {
-    socket.on("webrtc-offer", async ({ offer, sender }) => {
-      if (sender === name) return;
-      const pc = new RTCPeerConnection({
-        iceServers: [
-          { urls: "stun:stun.l.google.com:19302" },
-          { urls: "stun:stun1.l.google.com:19302" }
-        ]
-      });
+    socket.on("queue-update", ({ queue }) => setQueue(queue));
 
-      pc.ontrack = (event) => {
-        audioRef.current.srcObject = event.streams[0];
-        audioRef.current.volume = muted ? 0 : volume;
-        audioRef.current.play().catch(() => {});
-      };
-      pc.onicecandidate = (event) => {
-        if (event.candidate) {
-          socket.emit("webrtc-candidate", { room, candidate: event.candidate, to: sender });
-        }
-      };
+    socket.on("start-singer", ({ singer }) => {
+      setCurrentSinger(singer);
+      if (singer === name) startSinging();
+    });
 
-      pcRef.current = pc;
-      await pc.setRemoteDescription(offer);
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      socket.emit("webrtc-answer", { room, answer, to: sender });
+    socket.on("stop-singer", () => {
+      setCurrentSinger(null);
+      setRecording(false);
+      setMicLevel(0);
+    });
+
+    socket.on("webrtc-offer", async ({ offer }) => {
+      await pcRef.current.setRemoteDescription(offer);
+      const ans = await pcRef.current.createAnswer();
+      await pcRef.current.setLocalDescription(ans);
+      socket.emit("webrtc-answer", { room, answer: ans });
     });
 
     socket.on("webrtc-answer", async ({ answer }) => {
@@ -126,61 +139,94 @@ export default function SongPanel({ socket, room, name }) {
     });
 
     socket.on("webrtc-candidate", async ({ candidate }) => {
-      try { await pcRef.current?.addIceCandidate(candidate); }
-      catch(err){ console.warn("Add ICE candidate failed:", err); }
+      try { await pcRef.current?.addIceCandidate(candidate); } catch { }
     });
 
-    socket.on("user-start-singing", () => setCanSing(false));
-    socket.on("user-stop-singing", () => setCanSing(true));
-
-    // 後端送來結算平均分
-    socket.on("songResult", ({ singer, avg, count }) => {
-      setAvgScore(avg);
-      alert(`🎵 ${singer} 演唱結束\n平均分：${avg} 分\n參與人數：${count} 人`);
+    socket.on("songResult", ({ singer, avg }) => {
+      alert(`🎤 ${singer} 平均分：${avg}`);
     });
 
-    return () => {
-      socket.off("webrtc-offer");
-      socket.off("webrtc-answer");
-      socket.off("webrtc-candidate");
-      socket.off("user-start-singing");
-      socket.off("user-stop-singing");
-      socket.off("songResult");
-    };
-  }, [socket, muted, volume]);
+    return () => socket.off();
+  }, [recording]);
 
+  /* ========================
+     UI
+  ======================== */
   return (
     <div className="song-panel">
       <h4>🎤 唱歌區</h4>
-      <div className="controls">
-        {!recording ? (
-          <button disabled={!canSing} onClick={startRecord}>開始唱歌</button>
-        ) : (
-          <button onClick={stopRecord}>結束唱歌</button>
-        )}
+
+      <div className="now-singing">
+        {currentSinger ? `🎶 現在演唱：${currentSinger}` : "尚未開始"}
       </div>
 
-      <audio ref={audioRef} autoPlay />
-
-      {timeLeft > 0 && (
-        <div className="score-section">
-          ⏱️ 評分倒數：<span>{timeLeft} 秒</span>
-          <div className="score-stars">
-            {[1,2,3,4,5].map(n => (
-              <span
-                key={n}
-                className={`star ${n <= (hoverScore || score) ? "active" : ""}`}
-                onMouseEnter={() => !scoreSent && setHoverScore(n)}
-                onMouseLeave={() => !scoreSent && setHoverScore(0)}
-                onClick={() => !scoreSent && sendScore(n)}
-              >★</span>
-            ))}
-          </div>
-          {scoreSent && <div className="your-score">你給了：{score} 分</div>}
+      {recording && (
+        <div className="mic-meter">
+          <div className="mic-bar" style={{ width: `${Math.min(micLevel, 100)}%` }} />
         </div>
       )}
 
-      {avgScore !== null && <div className="avg-score">平均分：{avgScore} 分</div>}
+      {!currentSinger && (
+        <button onClick={joinQueue}>加入唱歌排隊</button>
+      )}
+
+      {currentSinger === name && recording && (
+        <button onClick={stopSinging}>結束演唱</button>
+      )}
+
+      {queue.length > 0 && (
+        <div className="queue">
+          ⏳ 排隊中：{queue.join(" → ")}
+        </div>
+      )}
+
+      <audio ref={audioRef} autoPlay />
+
+      {/* ===== 評分區（統一放這裡） ===== */}
+      {timeLeft > 0 && (
+        <>
+          {/* 1️⃣ 自己唱歌 → 禁止評分 */}
+          {currentSinger === name && (
+            <div className="score-section disabled">
+              🚫 你不能幫自己評分
+            </div>
+          )}
+
+          {/* 2️⃣ 沒聽到聲音 → 禁止評分 */}
+          {currentSinger !== name && !isListener && (
+            <div className="score-section disabled">
+              🔇 尚未接收到聲音，無法評分
+            </div>
+          )}
+
+          {/* 3️⃣ 正常評分（聽到＋不是自己） */}
+          {currentSinger !== name && isListener && (
+            <div className="score-section">
+              ⏱️ 評分倒數：<span>{timeLeft} 秒</span>
+
+              {!scoreSent ? (
+                <div className="score-stars">
+                  {[1, 2, 3, 4, 5].map(n => (
+                    <span
+                      key={n}
+                      className={`star ${n <= (hoverScore || score) ? "active" : ""}`}
+                      onMouseEnter={() => setHoverScore(n)}
+                      onMouseLeave={() => setHoverScore(0)}
+                      onClick={() => sendScore(n)}
+                    >
+                      ★
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <div className="your-score">
+                  你給了：{score} 分
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
