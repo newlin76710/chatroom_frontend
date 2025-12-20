@@ -8,15 +8,14 @@ export default function SongPanel({ socket, room, name }) {
 
   const [recording, setRecording] = useState(false);
   const [canSing, setCanSing] = useState(true);
-  const [score, setScore] = useState(0);       // 自己給的分
+  const [queue, setQueue] = useState([]);
+  const [currentSinger, setCurrentSinger] = useState(null);
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [score, setScore] = useState(0);
   const [hoverScore, setHoverScore] = useState(0);
   const [scoreSent, setScoreSent] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(0);
-  const [avgScore, setAvgScore] = useState(null); // 平均分
+  const [avgScore, setAvgScore] = useState(null);
   const timerRef = useRef(null);
-
-  const [volume, setVolume] = useState(1);
-  const [muted, setMuted] = useState(false);
 
   // ----- 開始唱歌 -----
   const startRecord = async () => {
@@ -26,41 +25,42 @@ export default function SongPanel({ socket, room, name }) {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       localStreamRef.current = stream;
 
-      pcRef.current = new RTCPeerConnection({
+      const pc = new RTCPeerConnection({
         iceServers: [
           { urls: "stun:stun.l.google.com:19302" },
           { urls: "stun:stun1.l.google.com:19302" }
         ]
       });
 
-      stream.getTracks().forEach(track => pcRef.current.addTrack(track, stream));
+      stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
-      pcRef.current.ontrack = (event) => {
+      pc.ontrack = (event) => {
         audioRef.current.srcObject = event.streams[0];
-        audioRef.current.volume = muted ? 0 : volume;
         audioRef.current.play().catch(() => {});
       };
 
-      pcRef.current.onicecandidate = (event) => {
+      pc.onicecandidate = (event) => {
         if (event.candidate) {
           socket.emit("webrtc-candidate", { room, candidate: event.candidate });
         }
       };
 
-      const offer = await pcRef.current.createOffer();
-      await pcRef.current.setLocalDescription(offer);
-      socket.emit("webrtc-offer", { room, offer });
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      socket.emit("webrtc-offer", { room, offer, sender: name });
+
+      pcRef.current = pc;
 
       setRecording(true);
       setCanSing(false);
       socket.emit("start-singing", { room, singer: name });
     } catch (err) {
-      console.error("取得麥克風失敗", err);
+      console.error(err);
       alert("無法取得麥克風權限");
     }
   };
 
-  // ----- 結束唱歌 -----
+  // ----- 停止唱歌 -----
   const stopRecord = () => {
     if (pcRef.current) {
       pcRef.current.close();
@@ -72,7 +72,6 @@ export default function SongPanel({ socket, room, name }) {
     setRecording(false);
     socket.emit("stop-singing", { room, singer: name });
 
-    // 開始 15 秒評分倒數
     setTimeLeft(15);
     setScoreSent(false);
   };
@@ -92,10 +91,17 @@ export default function SongPanel({ socket, room, name }) {
     socket.emit("scoreSong", { room, score: n });
   };
 
-  // ----- WebRTC & 唱歌事件 -----
+  // ----- Socket 事件 -----
   useEffect(() => {
+    socket.on("queue-update", ({ queue }) => setQueue(queue));
+    socket.on("start-singer", ({ singer }) => setCurrentSinger(singer));
+    socket.on("stop-singer", () => setCurrentSinger(null));
+    socket.on("songResult", ({ singer, avg }) => setAvgScore(avg));
+
+    // WebRTC 信令
     socket.on("webrtc-offer", async ({ offer, sender }) => {
       if (sender === name) return;
+
       const pc = new RTCPeerConnection({
         iceServers: [
           { urls: "stun:stun.l.google.com:19302" },
@@ -105,9 +111,9 @@ export default function SongPanel({ socket, room, name }) {
 
       pc.ontrack = (event) => {
         audioRef.current.srcObject = event.streams[0];
-        audioRef.current.volume = muted ? 0 : volume;
         audioRef.current.play().catch(() => {});
       };
+
       pc.onicecandidate = (event) => {
         if (event.candidate) {
           socket.emit("webrtc-candidate", { room, candidate: event.candidate, to: sender });
@@ -127,31 +133,24 @@ export default function SongPanel({ socket, room, name }) {
 
     socket.on("webrtc-candidate", async ({ candidate }) => {
       try { await pcRef.current?.addIceCandidate(candidate); }
-      catch(err){ console.warn("Add ICE candidate failed:", err); }
-    });
-
-    socket.on("user-start-singing", () => setCanSing(false));
-    socket.on("user-stop-singing", () => setCanSing(true));
-
-    // 後端送來結算平均分
-    socket.on("songResult", ({ singer, avg, count }) => {
-      setAvgScore(avg);
-      alert(`🎵 ${singer} 演唱結束\n平均分：${avg} 分\n參與人數：${count} 人`);
+      catch(err){ console.warn(err); }
     });
 
     return () => {
+      socket.off("queue-update");
+      socket.off("start-singer");
+      socket.off("stop-singer");
+      socket.off("songResult");
       socket.off("webrtc-offer");
       socket.off("webrtc-answer");
       socket.off("webrtc-candidate");
-      socket.off("user-start-singing");
-      socket.off("user-stop-singing");
-      socket.off("songResult");
     };
-  }, [socket, muted, volume]);
+  }, [socket, name]);
 
   return (
     <div className="song-panel">
       <h4>🎤 唱歌區</h4>
+
       <div className="controls">
         {!recording ? (
           <button disabled={!canSing} onClick={startRecord}>開始唱歌</button>
@@ -160,11 +159,15 @@ export default function SongPanel({ socket, room, name }) {
         )}
       </div>
 
+      <div className="queue">
+        <strong>排隊：</strong> {queue.join(", ")}
+      </div>
+
       <audio ref={audioRef} autoPlay />
 
       {timeLeft > 0 && (
         <div className="score-section">
-          ⏱️ 評分倒數：<span>{timeLeft} 秒</span>
+          ⏱️ 評分倒數：{timeLeft} 秒
           <div className="score-stars">
             {[1,2,3,4,5].map(n => (
               <span
@@ -176,11 +179,12 @@ export default function SongPanel({ socket, room, name }) {
               >★</span>
             ))}
           </div>
-          {scoreSent && <div className="your-score">你給了：{score} 分</div>}
+          {scoreSent && <div>你給了：{score} 分</div>}
         </div>
       )}
 
-      {avgScore !== null && <div className="avg-score">平均分：{avgScore} 分</div>}
+      {avgScore !== null && <div>平均分：{avgScore} 分</div>}
+      {currentSinger && <div>正在唱歌：{currentSinger}</div>}
     </div>
   );
 }
