@@ -117,9 +117,16 @@ export default function SongPanel({ socket, room, name }) {
     socket.on("queue-update", ({ queue }) => setQueue(queue));
 
     socket.on("start-singer", ({ singer }) => {
+      ensurePC();              // ⭐ listener 一定要先準備好
       setCurrentSinger(singer);
+      setIsListener(false);   // ⭐ 很重要
+      setTimeLeft(0);
+      setScore(0);
+      setScoreSent(false);
+
       if (singer === name) startSinging();
     });
+
 
     socket.on("stop-singer", () => {
       setCurrentSinger(null);
@@ -128,6 +135,7 @@ export default function SongPanel({ socket, room, name }) {
     });
 
     socket.on("webrtc-offer", async ({ offer }) => {
+      ensurePC(); // ⭐⭐⭐ 必須補這行
       await pcRef.current.setRemoteDescription(offer);
       const ans = await pcRef.current.createAnswer();
       await pcRef.current.setLocalDescription(ans);
@@ -167,7 +175,9 @@ export default function SongPanel({ socket, room, name }) {
       )}
 
       {!currentSinger && (
-        <button onClick={joinQueue}>加入唱歌排隊</button>
+        <button onClick={joinQueue} disabled={currentSinger === name}>
+          {queue.includes(name) ? "已在排隊中" : "加入唱歌排隊"}
+        </button>
       )}
 
       {currentSinger === name && recording && (
@@ -180,7 +190,12 @@ export default function SongPanel({ socket, room, name }) {
         </div>
       )}
 
-      <audio ref={audioRef} autoPlay />
+      <audio
+        ref={audioRef}
+        autoPlay
+        playsInline
+        controls={false}
+      />
 
       {/* ===== 評分區（統一放這裡） ===== */}
       {timeLeft > 0 && (
