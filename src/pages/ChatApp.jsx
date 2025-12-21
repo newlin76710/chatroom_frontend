@@ -25,7 +25,12 @@ const safeText = (v) => {
 const formatLv = (lv) => String(lv).padStart(2, "0");
 
 let globalSocket = null;
-if (!globalSocket) globalSocket = io(BACKEND);
+if (!globalSocket) {
+  globalSocket = io(BACKEND, {
+    transports: ["websocket"], // 強制使用 websocket
+    withCredentials: true,     // 配合後端 cors
+  });
+}
 
 export default function ChatApp() {
   const [room] = useState("public");
