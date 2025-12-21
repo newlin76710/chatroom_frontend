@@ -2,7 +2,7 @@ import { useRef, useState, useEffect } from "react";
 import "./SongPanel.css";
 
 export default function SongPanel({ socket, room, onLeaveRoom }) {
-  const [phase, setPhase] = useState("idle"); // idle | singing | scoring
+  const [phase, setPhase] = useState("idle"); // idle | singing | scoring | canListen
   const [listeners, setListeners] = useState([]);
   const [micLevel, setMicLevel] = useState(0);
   const [myScore, setMyScore] = useState(null);
@@ -19,6 +19,10 @@ export default function SongPanel({ socket, room, onLeaveRoom }) {
   const analyserRef = useRef(null);
   const dataArrayRef = useRef(null);
   const animationIdRef = useRef(null);
+
+  // ===== 新增倒數計時狀態 =====
+  const [scoreCountdown, setScoreCountdown] = useState(0);
+  const countdownRef = useRef(null);
 
   // ===== 開始唱歌 =====
   const startSinging = async () => {
@@ -54,7 +58,7 @@ export default function SongPanel({ socket, room, onLeaveRoom }) {
     }
   };
 
-  // ===== 停止唱歌 =====
+  // ===== 更新 stopSinging =====
   const stopSinging = () => {
     if (phase !== "singing") return;
 
@@ -64,14 +68,12 @@ export default function SongPanel({ socket, room, onLeaveRoom }) {
     cancelAnimationFrame(animationIdRef.current);
     audioCtxRef.current?.close();
 
-    // 關閉對聽眾的 PC
     pcsRef.current.forEach((pc, listenerId) => {
       pc.close();
       socket.emit("listener-left", { room, listenerId });
     });
     pcsRef.current.clear();
 
-    // 移除 audio
     audioRefs.current.forEach(a => {
       a.pause();
       a.srcObject = null;
@@ -82,10 +84,23 @@ export default function SongPanel({ socket, room, onLeaveRoom }) {
     setMicLevel(0);
     setPhase("scoring");
 
-    socket.emit("stop-singing", { room, singer: socket.id });
-    console.log("🎤 歌唱結束，開始評分");
+    // 倒數設定，例如 15 秒
+    setScoreCountdown(15);
+    countdownRef.current = setInterval(() => {
+      setScoreCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(countdownRef.current);
+          countdownRef.current = null;
+          // 可選：強制結束評分
+          socket.emit("scoreTimeUp", { room });
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
 
-    // 後端會廣播 scoring-start → 前端可以接收
+    socket.emit("stop-singing", { room, singer: socket.id });
+    console.log("🎤 歌唱結束，開始評分倒數");
   };
 
   // ===== 評分 =====
@@ -101,6 +116,12 @@ export default function SongPanel({ socket, room, onLeaveRoom }) {
 
   // ===== 唱歌者處理新聽眾 =====
   useEffect(() => {
+        socket.on("update-room-phase", ({ phase, singer }) => {
+      setPhase(phase);
+      setCurrentSinger(singer || null);
+    });
+
+    socket.on("score-countdown", ({ countdown }) => setScoreCountdown(countdown));
     socket.on("new-listener", async ({ listenerId }) => {
       if (phase !== "singing" || !localStreamRef.current) return;
       if (pcsRef.current.has(listenerId)) return;
@@ -142,6 +163,8 @@ export default function SongPanel({ socket, room, onLeaveRoom }) {
     });
 
     return () => {
+      socket.off("update-room-phase");
+      socket.off("score-countdown");
       socket.off("new-listener"); socket.off("listener-left");
       socket.off("webrtc-answer"); socket.off("webrtc-candidate");
     };
@@ -204,16 +227,22 @@ export default function SongPanel({ socket, room, onLeaveRoom }) {
     };
   }, [socket]);
 
-  // ===== 接收 songResult 更新平均分 =====
+
+  // ===== songResult 接收後清理倒數 =====
   useEffect(() => {
-    socket.on("scoring-start", () => setPhase("scoring")); // 後端廣播進入 scoring
     socket.on("songResult", ({ avg, count }) => {
       setAvgScore(avg);
       setScoreCount(count);
-      setPhase("idle"); // 評分結束，回 idle
+      setPhase("idle");
       setMyScore(null);
+
+      if (countdownRef.current) {
+        clearInterval(countdownRef.current);
+        countdownRef.current = null;
+        setScoreCountdown(0);
+      }
     });
-    return () => { socket.off("scoring-start"); socket.off("songResult"); };
+    return () => socket.off("songResult");
   }, [socket]);
 
   useEffect(() => {
@@ -271,14 +300,27 @@ export default function SongPanel({ socket, room, onLeaveRoom }) {
       )}
 
       {phase === "scoring" && (
-        <div className="score-buttons">
-          {[1, 2, 3, 4, 5].map(n => <button key={n} onClick={() => scoreSong(n)}>{n}</button>)}
+        <div className="score-container">
+          <div className="score-countdown">評分倒數: {scoreCountdown} 秒</div>
+          <div className="score-stars">
+            {[1, 2, 3, 4, 5].map((n) => (
+              <span
+                key={n}
+                className={`star ${myScore >= n ? "selected" : ""}`}
+                onClick={() => scoreSong(n)}
+              >
+                ★
+              </span>
+            ))}
+          </div>
+          {myScore && <div className="your-score">你給了 <strong>{myScore}</strong> 分 ⭐</div>}
+          {avgScore !== null && <div className="avg-score">平均: {avgScore.toFixed(1)} ({scoreCount}人)</div>}
         </div>
       )}
 
       <div className="listeners">
         <h4>聽眾 ({listeners.length})</h4>
-        {phase !== "singing" && <>
+        {phase === "canListen" && <>
           <button onClick={startListening}>開始聽歌</button>
           <button onClick={stopListening}>取消聽歌</button>
         </>}
