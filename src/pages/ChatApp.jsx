@@ -3,6 +3,7 @@ import { io } from "socket.io-client";
 import MessageList from "./MessageList";
 import VideoPlayer from "./VideoPlayer";
 import SongPanel from "./SongPanel";
+import Listener from "./Listener";
 import UserList from "./UserList";
 import { aiAvatars } from "./aiConfig";
 import "./ChatApp.css";
@@ -415,7 +416,12 @@ export default function ChatApp() {
           />
           <button onClick={send} disabled={cooldown}>發送</button>
         </div>
-
+        {/* 🔥 聽歌端：一定要永遠存在 */}
+        <Listener
+          socket={socket}
+          room={room}
+          name={name}
+        />
         {showSongPanel && (
           <SongPanel
             socket={socket}
