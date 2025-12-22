@@ -1,4 +1,4 @@
-// Listener.jsx（安全版）
+// Listener.jsx（增加完整 log）
 import { useEffect, useRef, useState } from "react";
 import * as mediasoupClient from "mediasoup-client";
 
@@ -10,15 +10,24 @@ export default function Listener({ socket, room }) {
   const audioRef = useRef(null);
 
   const [audioUnlocked, setAudioUnlocked] = useState(false);
-  const pendingProducersRef = useRef([]); // 還沒播放的 producerId
+  const pendingProducersRef = useRef([]);
   const consumedRef = useRef(new Set());
 
-  // ===== consume producer =====
-  const consumeProducer = async (producerId) => {
-    if (consumedRef.current.has(producerId)) return;
-    consumedRef.current.add(producerId);
+  const log = (...args) => console.log("🔹 Listener log:", ...args);
 
-    if (!deviceRef.current || !recvTransportRef.current) return;
+  const consumeProducer = async (producerId) => {
+    if (consumedRef.current.has(producerId)) {
+      log("already consumed", producerId);
+      return;
+    }
+    consumedRef.current.add(producerId);
+    log("consume called for", producerId);
+
+    if (!deviceRef.current || !recvTransportRef.current) {
+      log("device or transport not ready, queueing producer", producerId);
+      pendingProducersRef.current.push(producerId);
+      return;
+    }
 
     const { id, kind, rtpParameters } = await new Promise((resolve) => {
       socket.emit(
@@ -27,6 +36,7 @@ export default function Listener({ socket, room }) {
         resolve
       );
     });
+    log("consumer info received", { id, kind, producerId });
 
     const consumer = await recvTransportRef.current.consume({
       id,
@@ -35,110 +45,106 @@ export default function Listener({ socket, room }) {
       rtpParameters,
       paused: false,
     });
+    log("consumer created", consumer);
 
-    // 🔹 不覆蓋 srcObject，用 addTrack 累加
-    let stream = audioRef.current.srcObject;
-    if (!stream) {
-      stream = new MediaStream();
-      audioRef.current.srcObject = stream;
+    if (!audioRef.current.srcObject) {
+      audioRef.current.srcObject = new MediaStream();
+      log("new MediaStream created for audio");
     }
-    stream.addTrack(consumer.track);
 
-    // 🔹 延遲播放，避免 AbortError
-    setTimeout(async () => {
+    audioRef.current.srcObject.addTrack(consumer.track);
+    log("track added to MediaStream", consumer.track);
+
+    audioRef.current.muted = false;
+    audioRef.current.volume = 1.0;
+
+    if (audioUnlocked) {
       try {
         await audioRef.current.play();
-        console.log("🔊 playing", producerId);
+        log("playing producer", producerId);
       } catch (e) {
         console.error("❌ play failed", e);
       }
-    }, 50);
+    } else {
+      log("audio not unlocked yet, queued producer", producerId);
+      pendingProducersRef.current.push(producerId);
+    }
   };
 
-  // ===== 解鎖聲音 =====
   const unlockAudio = async () => {
     if (!audioRef.current) return;
-
     try {
-      if (!audioRef.current.srcObject) audioRef.current.srcObject = new MediaStream();
-      await new Promise(r => setTimeout(r, 50)); // 延遲
-      await audioRef.current.play();
-
       setAudioUnlocked(true);
-      console.log("🔓 Audio unlocked");
+      audioRef.current.muted = false;
+      audioRef.current.volume = 1.0;
 
-      // 🔹 立即 consume 當前 active producer
-      socket.emit("get-active-producers", { room }, async (producers) => {
-        for (const pid of producers) await consumeProducer(pid);
-      });
+      if (!audioRef.current.srcObject) {
+        audioRef.current.srcObject = new MediaStream();
+      }
+      await audioRef.current.play();
+      log("Audio unlocked!");
 
-      // 🔹 consume pending queue
-      for (const pid of pendingProducersRef.current) await consumeProducer(pid);
+      log("consuming pending producers", pendingProducersRef.current);
+      for (const pid of pendingProducersRef.current) {
+        await consumeProducer(pid);
+      }
       pendingProducersRef.current = [];
     } catch (e) {
       console.error("❌ unlock failed", e);
     }
   };
 
-  // ===== 初始化 Mediasoup recvTransport =====
   useEffect(() => {
+    log("Initializing mediasoup listener...");
     const init = async () => {
       const device = new mediasoupClient.Device();
       deviceRef.current = device;
 
-      const { rtpCapabilities } = await fetch(`${BACKEND}/mediasoup-rtpCapabilities`).then(r => r.json());
+      const { rtpCapabilities } = await fetch(
+        `${BACKEND}/mediasoup-rtpCapabilities`
+      ).then((r) => r.json());
+      log("rtpCapabilities fetched", rtpCapabilities);
+
       await device.load({ routerRtpCapabilities: rtpCapabilities });
+      log("device loaded");
 
       socket.emit("create-transport", { direction: "recv" }, (transportInfo) => {
+        log("transportInfo received", transportInfo);
         const transport = device.createRecvTransport(transportInfo);
         recvTransportRef.current = transport;
 
         transport.on("connect", ({ dtlsParameters }, callback) => {
-          socket.emit("connect-transport", { transportId: transport.id, dtlsParameters });
+          socket.emit("connect-transport", {
+            transportId: transport.id,
+            dtlsParameters,
+          });
+          log("transport connect event fired", transport.id);
           callback();
         });
       });
     };
-
     init();
   }, []);
 
-  // ===== 監聽新 producer =====
   useEffect(() => {
     const handler = ({ producerId }) => {
-      console.log("🎧 new producer", producerId);
-
-      if (!audioUnlocked) {
-        console.warn("🔇 queued producer", producerId);
-        pendingProducersRef.current.push(producerId);
-        return;
-      }
-
+      log("new-producer event received", producerId);
       consumeProducer(producerId);
     };
-
     socket.on("new-producer", handler);
     return () => socket.off("new-producer", handler);
   }, [audioUnlocked]);
 
-  return (
-    <>
-      {/* 🔹 audio 永遠存在 DOM */}
-      <audio ref={audioRef} autoPlay />
+  useEffect(() => {
+    const listener = () => {
+      if (!audioUnlocked) {
+        log("click detected, unlocking audio...");
+        unlockAudio();
+      }
+    };
+    window.addEventListener("click", listener);
+    return () => window.removeEventListener("click", listener);
+  }, [audioUnlocked]);
 
-      {!audioUnlocked && (
-        <button
-          onClick={unlockAudio}
-          style={{
-            position: "fixed",
-            bottom: 20,
-            right: 20,
-            zIndex: 9999,
-          }}
-        >
-          🔊 啟用聊天室聲音
-        </button>
-      )}
-    </>
-  );
+  return <audio ref={audioRef} autoPlay />;
 }
