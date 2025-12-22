@@ -1,38 +1,47 @@
-import { useRef, useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
+import YouTube from "react-youtube";
+import { io } from "socket.io-client";
 import "./SongPanel.css";
+import * as mediasoupClient from "mediasoup-client";
 
-export default function SongPanel({ socket, room, onLeaveRoom }) {
-  const [phase, setPhase] = useState("idle"); // idle | singing | scoring | canListen
-  const [listeners, setListeners] = useState([]);
+const BACKEND = import.meta.env.VITE_BACKEND_URL || "http://localhost:10000";
+const socket = io(BACKEND, { transports: ["websocket"] });
+
+export default function SongPanel({ room, name }) {
+  const [phase, setPhase] = useState("idle"); // idle | singing | scoring
   const [micLevel, setMicLevel] = useState(0);
   const [myScore, setMyScore] = useState(null);
   const [avgScore, setAvgScore] = useState(null);
   const [scoreCount, setScoreCount] = useState(0);
-  const [currentSinger, setCurrentSinger] = useState(null);
+  const [scoreCountdown, setScoreCountdown] = useState(0);
 
   const localStreamRef = useRef(null);
-  const pcsRef = useRef(new Map());
-  const audioRefs = useRef(new Map());
-  const listenerPCRef = useRef(null);
-
   const audioCtxRef = useRef(null);
   const analyserRef = useRef(null);
   const dataArrayRef = useRef(null);
   const animationIdRef = useRef(null);
-
-  // ===== 新增倒數計時狀態 =====
-  const [scoreCountdown, setScoreCountdown] = useState(0);
   const countdownRef = useRef(null);
-  const [canScore, setCanScore] = useState(true);
+
+  // ===== Mediasoup =====
+  const deviceRef = useRef(null);
+  const producerTransportRef = useRef(null);
+  const consumerTransportsRef = useRef([]);
+  const producersRef = useRef([]);
+  const consumersRef = useRef([]);
+
+  // ===== YouTube =====
+  const ytRef = useRef(null);
 
   // ===== 開始唱歌 =====
   const startSinging = async () => {
     if (phase !== "idle") return;
 
     try {
+      // ===== MediaStream =====
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       localStreamRef.current = stream;
 
+      // Mic meter
       audioCtxRef.current = new AudioContext();
       const source = audioCtxRef.current.createMediaStreamSource(stream);
       analyserRef.current = audioCtxRef.current.createAnalyser();
@@ -40,28 +49,61 @@ export default function SongPanel({ socket, room, onLeaveRoom }) {
       source.connect(analyserRef.current);
       dataArrayRef.current = new Uint8Array(analyserRef.current.frequencyBinCount);
 
-      const updateMicMeter = () => {
+      const updateMic = () => {
         analyserRef.current.getByteFrequencyData(dataArrayRef.current);
         const avg = dataArrayRef.current.reduce((a, b) => a + b, 0) / dataArrayRef.current.length;
         setMicLevel(avg / 255);
-        animationIdRef.current = requestAnimationFrame(updateMicMeter);
+        animationIdRef.current = requestAnimationFrame(updateMic);
       };
-      updateMicMeter();
+      updateMic();
+
+      // ===== Mediasoup Client Device =====
+      const device = new mediasoupClient.Device();
+      deviceRef.current = device;
+
+      // 從後端獲取 router rtpCapabilities
+      const { rtpCapabilities } = await fetch(`${BACKEND}/mediasoup-rtpCapabilities`).then(r => r.json());
+      await device.load({ routerRtpCapabilities: rtpCapabilities });
+
+      // ===== 建立 Transport =====
+      socket.emit("create-transport", null, async transportInfo => {
+        const transport = device.createSendTransport(transportInfo);
+        producerTransportRef.current = transport;
+
+        transport.on("connect", ({ dtlsParameters }, callback, errCallback) => {
+          socket.emit("connect-transport", { transportId: transport.id, dtlsParameters });
+          callback();
+        });
+
+        transport.on("produce", async ({ kind, rtpParameters }, callback, errCallback) => {
+          socket.emit("produce", { transportId: transport.id, kind, rtpParameters }, ({ id }) => {
+            callback({ id });
+          });
+        });
+
+        // ===== Produce 音訊 =====
+        const track = stream.getAudioTracks()[0];
+        await transport.produce({ track });
+      });
+
+      socket.emit("start-singing", { room, singer: name });
 
       setPhase("singing");
       setMyScore(null);
       setAvgScore(0);
       setScoreCount(0);
 
-      socket.emit("start-singing", { room, singer: socket.id });
-    } catch (e) {
-      console.error("麥克風失敗", e);
+    } catch (err) {
+      console.error("🎤 麥克風取得失敗", err);
     }
   };
 
-  // ===== 更新 stopSinging =====
+  // ===== 停止唱歌 =====
   const stopSinging = () => {
     if (phase !== "singing") return;
+
+    producerTransportRef.current?.close();
+    producerTransportRef.current = null;
 
     localStreamRef.current?.getTracks().forEach(t => t.stop());
     localStreamRef.current = null;
@@ -69,317 +111,80 @@ export default function SongPanel({ socket, room, onLeaveRoom }) {
     cancelAnimationFrame(animationIdRef.current);
     audioCtxRef.current?.close();
 
-    pcsRef.current.forEach((pc, listenerId) => {
-      pc.close();
-      socket.emit("listener-left", { room, listenerId });
-    });
-    pcsRef.current.clear();
-
-    audioRefs.current.forEach(a => {
-      a.pause();
-      a.srcObject = null;
-      a.remove();
-    });
-    audioRefs.current.clear();
-
     setMicLevel(0);
     setPhase("scoring");
-
-    // 倒數設定，例如 15 秒
     setScoreCountdown(15);
 
-    socket.emit("stop-singing", { room, singer: socket.id });
-    console.log("🎤 歌唱結束，開始評分倒數");
+    socket.emit("stop-singing", { room, singer: name });
   };
 
   // ===== 評分 =====
-  const scoreSong = (score) => {
+  const scoreSong = score => {
     if (phase !== "scoring") return;
-    if (!canScore) return;
-    setCanScore(false);
     setMyScore(score);
     socket.emit("scoreSong", { room, score });
   };
 
-  // ===== 聽眾控制 =====
-  const startListening = () => socket.emit("listener-ready", { room, listenerId: socket.id });
-  const stopListening = () => socket.emit("stop-listening", { room, listenerId: socket.id });
-
-  // ===== 唱歌者處理新聽眾 =====
-  useEffect(() => {
-    socket.on("update-room-phase", ({ phase, singer }) => {
-      setPhase(phase);
-      setCurrentSinger(singer || null);
-    });
-
-    socket.on("score-countdown", ({ countdown }) => setScoreCountdown(countdown));
-    socket.on("new-listener", async ({ listenerId }) => {
-      if (phase !== "singing" || !localStreamRef.current) return;
-      if (pcsRef.current.has(listenerId)) return;
-
-      const pc = new RTCPeerConnection({
-        iceServers: [
-          { urls: "stun:stun.l.google.com:19302" },
-          {
-            urls: "turn:openrelay.metered.ca:80",
-            username: "openrelayproject",
-            credential: "openrelayproject"
-          }]
-      });
-      localStreamRef.current.getTracks().forEach(t => pc.addTrack(t, localStreamRef.current));
-
-      pc.onicecandidate = e => {
-        if (e.candidate) socket.emit("webrtc-candidate", { to: listenerId, candidate: e.candidate });
-      };
-
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      socket.emit("webrtc-offer", { to: listenerId, offer });
-
-      pcsRef.current.set(listenerId, pc);
-    });
-
-    socket.on("listener-left", ({ listenerId }) => {
-      const pc = pcsRef.current.get(listenerId);
-      if (pc) pc.close();
-      pcsRef.current.delete(listenerId);
-
-      const audio = audioRefs.current.get(listenerId);
-      if (audio) {
-        audio.pause(); audio.srcObject = null; audio.remove();
-        audioRefs.current.delete(listenerId);
-      }
-    });
-
-    socket.on("webrtc-answer", async ({ from, answer }) => {
-      const pc = pcsRef.current.get(from);
-      if (pc) await pc.setRemoteDescription(answer);
-    });
-
-    socket.on("webrtc-candidate", async ({ from, candidate }) => {
-      const pc = pcsRef.current.get(from);
-      if (pc) await pc.addIceCandidate(candidate).catch(() => { });
-    });
-
-    return () => {
-      socket.off("update-room-phase");
-      socket.off("score-countdown");
-      socket.off("new-listener"); socket.off("listener-left");
-      socket.off("webrtc-answer"); socket.off("webrtc-candidate");
-    };
-  }, [socket, phase]);
-
-  // ===== 聽眾接收音訊 =====
-  useEffect(() => {
-    socket.on("webrtc-offer", async ({ from, offer }) => {
-      if (phase === "singing") return;
-      const pc = new RTCPeerConnection({
-        iceServers: [
-          { urls: "stun:stun.l.google.com:19302" },
-          {
-            urls: "turn:openrelay.metered.ca:80",
-            username: "openrelayproject",
-            credential: "openrelayproject"
-          }]
-      });
-      listenerPCRef.current = pc;
-
-      pc.ontrack = e => {
-        let audio = audioRefs.current.get(from);
-        if (!audio) {
-          audio = document.createElement("audio");
-          audio.autoplay = true;
-          document.body.appendChild(audio);
-          audioRefs.current.set(from, audio);
-        }
-        audio.srcObject = e.streams[0];
-      };
-
-      pc.onicecandidate = e => {
-        if (e.candidate) socket.emit("webrtc-candidate", { to: from, candidate: e.candidate });
-      };
-
-      await pc.setRemoteDescription(offer);
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      socket.emit("webrtc-answer", { to: from, answer });
-    });
-
-    return () => socket.off("webrtc-offer");
-  }, [socket, phase]);
-
-  // ===== 聽眾清理 =====
-  useEffect(() => {
-    const onListenerLeft = () => {
-      if (listenerPCRef.current) { listenerPCRef.current.close(); listenerPCRef.current = null; }
-      audioRefs.current.forEach(a => { a.pause(); a.srcObject = null; a.remove(); });
-      audioRefs.current.clear();
-    };
-    socket.on("listener-left", onListenerLeft);
-    return () => socket.off("listener-left", onListenerLeft);
-  }, [socket]);
-
-  // ===== 更新聽眾列表 =====
-  useEffect(() => {
-    socket.on("update-listeners", ({ listeners }) => setListeners(listeners || []));
-    return () => socket.off("update-listeners");
-  }, [socket]);
-
-  // ===== 接收目前唱歌者 =====
-  useEffect(() => {
-    socket.on("user-start-singing", ({ singer }) => setCurrentSinger(singer));
-    socket.on("user-stop-singing", () => {
-      setCurrentSinger(null)
-      setScoreCountdown(15);
-    });
-    return () => {
-      socket.off("user-start-singing"); socket.off("user-stop-singing");
-    };
-  }, [socket]);
-
   // ===== 評分倒數 =====
   useEffect(() => {
     if (phase !== "scoring") return;
-
-    if (scoreCountdown <= 0) return;
-
     countdownRef.current = setInterval(() => {
-      setScoreCountdown(prev => {
-        if (prev <= 1) {
-          clearInterval(countdownRef.current);
-          countdownRef.current = null;
-          return 0;
-        }
-        return prev - 1;
+      setScoreCountdown(s => {
+        if (s <= 1) { clearInterval(countdownRef.current); return 0; }
+        return s - 1;
       });
     }, 1000);
+    return () => clearInterval(countdownRef.current);
+  }, [phase]);
 
-    return () => {
-      if (countdownRef.current) {
-        clearInterval(countdownRef.current);
-        countdownRef.current = null;
-      }
-    };
-  }, [phase, scoreCountdown]);
-
-  // ===== songResult 接收後清理倒數 =====
+  // ===== 接收結果 =====
   useEffect(() => {
     socket.on("songResult", ({ avg, count }) => {
-      console.log("avg= ", avg)
-      console.log("count= ", count)
       setAvgScore(avg);
       setScoreCount(count);
       setPhase("idle");
-      setCanScore(true); //重新可以給分
       setMyScore(null);
-
-      if (countdownRef.current) {
-        clearInterval(countdownRef.current);
-        countdownRef.current = null;
-        setScoreCountdown(0);
-      }
+      setScoreCountdown(0);
     });
     return () => socket.off("songResult");
-  }, [socket]);
+  }, []);
 
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      // 停止聽歌
-      stopListening();
-
-      // 關閉自己的 WebRTC
-      if (listenerPCRef.current) {
-        listenerPCRef.current.close();
-        listenerPCRef.current = null;
-      }
-
-      // 移除 audio 元素
-      audioRefs.current.forEach(a => {
-        a.pause();
-        a.srcObject = null;
-        a.remove();
-      });
-      audioRefs.current.clear();
-
-      // 可選：斷線 socket
-      socket.disconnect();
-    };
-
-    window.addEventListener("beforeunload", handleBeforeUnload);
-
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [socket]);
-
-  // ===== 離開房間清理 =====
-  const leaveRoom = () => {
-    handleBeforeUnload(); // 重用上面的清理
-    onLeaveRoom?.();
+  // ===== YouTube 伴奏 =====
+  const onReady = event => {
+    ytRef.current = event.target;
+    ytRef.current.playVideo();
   };
 
-  // ===== UI =====
   return (
     <div className="song-panel">
       <h4>🎤 唱歌區</h4>
 
-      {/* 唱歌控制按鈕 */}
+      <YouTube videoId="VIDEO_ID_HERE" opts={{ width: "100%", playerVars: { autoplay: 1 } }} onReady={onReady} />
+
       <div className="controls">
-        <button onClick={startSinging} disabled={phase !== "idle" || currentSinger}>
-          開始唱歌
-        </button>
-        <button onClick={stopSinging} disabled={phase !== "singing"}>
-          停止唱歌
-        </button>
+        <button onClick={startSinging} disabled={phase !== "idle"}>開始唱歌</button>
+        <button onClick={stopSinging} disabled={phase !== "singing"}>停止唱歌</button>
       </div>
 
-      {/* 麥克風音量表 */}
       {(phase === "singing" || phase === "scoring") && (
         <div className="mic-meter">
           {phase === "singing" && <div className="mic-bar" style={{ width: `${micLevel * 100}%` }} />}
         </div>
       )}
 
-      {/* 評分區 */}
       {phase === "scoring" && (
         <div className="score-container">
-          <div className="score-countdown">評分倒數: {scoreCountdown} 秒</div>
+          <div className="score-countdown">評分倒數：{scoreCountdown} 秒</div>
           <div className="score-stars">
-            {[1, 2, 3, 4, 5].map(n => (
-              <span
-                key={n}
-                className={`star ${myScore >= n ? "selected" : ""}`}
-                onClick={() => scoreSong(n)}
-              >
-                ★
-              </span>
+            {[1,2,3,4,5].map(n => (
+              <span key={n} className={myScore >= n ? "selected" : ""} onClick={() => scoreSong(n)}>★</span>
             ))}
           </div>
-          {myScore && <div className="your-score">你給了 <strong>{myScore}</strong> 分 ⭐</div>}
         </div>
       )}
-      {/* 永遠顯示上一位平均分數 */}
+
       <div className="avg-score">
-        上一位平均: {avgScore !== null ? avgScore.toFixed(1) : "--"}  分 ⭐ ({scoreCount}人)
-      </div>
-      {/* 聽眾區 */}
-      <div className="listeners">
-        <h4>聽眾 ({listeners.length})</h4>
-
-        {/* 聽歌控制 */}
-        {phase === "canListen" && (
-          <div className="listener-controls">
-            <button onClick={startListening}>開始聽歌</button>
-            <button onClick={stopListening}>取消聽歌</button>
-          </div>
-        )}
-
-        {/* 聽眾列表 */}
-        <ul className="listener-list">
-          {listeners.map(listener => (
-            <li key={`${listener.id}-${listener.name}`}>
-              {listener.name || listener.id}
-            </li>
-          ))}
-        </ul>
+        上一位平均：{avgScore !== null ? avgScore.toFixed(1) : "--"} 分 ⭐（{scoreCount} 人）
       </div>
     </div>
   );

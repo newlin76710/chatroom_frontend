@@ -7,13 +7,18 @@
   background: #1e1e1e;
   color: #fff;
   border-radius: 8px;
-  padding: 10px;
+  padding: 1rem;
   box-shadow: 0 4px 12px rgba(0,0,0,0.5);
   font-family: sans-serif;
   z-index: 9999;
+  transition: width 0.3s, padding 0.3s;
 }
 
-.song-panel.collapsed { width: 160px; padding: 5px; overflow: hidden; }
+.song-panel.collapsed {
+  width: 160px;
+  padding: 5px;
+  overflow: hidden;
+}
 
 /* ===== 標題 ===== */
 .song-header {
@@ -22,7 +27,10 @@
   align-items: center;
   cursor: pointer;
 }
-.song-header h4 { margin: 0; font-size: 1rem; }
+.song-header h4 {
+  margin: 0;
+  font-size: 1rem;
+}
 .song-header button {
   background: #6200ee;
   border: none;
@@ -31,12 +39,14 @@
   padding: 2px 6px;
   font-size: 0.8rem;
   cursor: pointer;
+  transition: background 0.2s;
 }
+.song-header button:hover { background: #7e39ff; }
 
 /* ===== 按鈕 ===== */
 button {
   margin: 5px 0;
-  padding: 5px 10px;
+  padding: 0.5rem 1rem;
   border: none;
   border-radius: 4px;
   background: #6200ee;
@@ -51,10 +61,10 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 /* ===== Mic Meter ===== */
 .mic-meter {
   width: 100%;
-  height: 8px;
-  background: #333;
+  height: 10px;
+  background: #444;
   border-radius: 4px;
-  margin: 10px 0;
+  margin: 0.5rem 0;
   overflow: hidden;
 }
 .mic-bar {
@@ -64,14 +74,34 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 }
 
 /* ===== 星星打分 ===== */
-.score-container { margin-top: 12px; text-align: center; }
-.score-countdown { font-size: 14px; margin-bottom: 5px; color: #ff5555; }
-.score-stars { font-size: 24px; cursor: pointer; }
+.score-container {
+  margin-top: 12px;
+  text-align: center;
+}
+.score-countdown {
+  font-size: 14px;
+  margin-bottom: 5px;
+  color: #ff5555;
+}
+.score-stars {
+  font-size: 2rem;
+  cursor: pointer;
+}
+.score-stars span {
+  margin-right: 0.2rem;
+}
 .score-stars .selected { color: gold; }
-.your-score, .avg-score { margin-top: 5px; font-size: 14px; }
+.your-score,
+.avg-score {
+  margin-top: 5px;
+  font-size: 14px;
+}
 
 /* ===== 聽眾列表 ===== */
-.listeners { margin-top: 16px; text-align: center; }
+.listeners {
+  margin-top: 16px;
+  text-align: center;
+}
 .listener-list {
   list-style: none;
   padding-left: 0;
@@ -89,9 +119,22 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ===== 響應式 ===== */
 @media (max-width: 480px) {
-  .song-panel { width: 200px; padding: 8px; }
-  .score-stars { font-size: 22px; }
-  .song-header h4 { font-size: 0.9rem; }
-  .song-header button, button { font-size: 0.7rem; padding: 4px 8px; }
-  .listener-list li { font-size: 12px; }
+  .song-panel {
+    width: 200px;
+    padding: 8px;
+  }
+  .score-stars {
+    font-size: 22px;
+  }
+  .song-header h4 {
+    font-size: 0.9rem;
+  }
+  .song-header button,
+  button {
+    font-size: 0.7rem;
+    padding: 4px 8px;
+  }
+  .listener-list li {
+    font-size: 12px;
+  }
 }
