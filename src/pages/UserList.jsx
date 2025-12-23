@@ -8,32 +8,56 @@ export default function UserList({
   setTarget,
   setChatMode,
   userListCollapsed,
-  setUserListCollapsed
+  setUserListCollapsed,
+  kickUser, // 新增 kickUser prop
+  myLevel, // 新增自己等級
+  myName   // 新增自己名字
 }) {
   const formatLv = (lv) => String(lv).padStart(2, "0");
 
   return (
     <div className={`user-list ${userListCollapsed ? "collapsed" : ""}`}>
-      <div className="user-list-header" onClick={() => setUserListCollapsed(!userListCollapsed)}>
+      <div
+        className="user-list-header"
+        onClick={() => setUserListCollapsed(!userListCollapsed)}
+      >
         在線：{userList.length}
       </div>
+
       {!userListCollapsed &&
         userList.map((u, idx) => {
-          // 先用使用者自訂 avatar，沒有才用 AI avatar
           const avatarUrl = u.avatar || aiAvatars[u.name];
 
           return (
             <div
-              key={`${u.id}-${idx}`}
+              key={`${u.name}-${idx}`} // 修正 key 問題
               className={`user-item ${u.name === target ? "selected" : ""}`}
-              onClick={() => { setChatMode("private"); setTarget(u.name); }}
+              onClick={() => {
+                setChatMode("private");
+                setTarget(u.name);
+              }}
             >
-              {avatarUrl && <img src={avatarUrl} alt={u.name} className="user-avatar" />}
+              {avatarUrl && (
+                <img src={avatarUrl} alt={u.name} className="user-avatar" />
+              )}
               {u.name} [Lv.{formatLv(u.level)}] ({u.gender})
+
+              {/* 如果自己是 99 等，才顯示踢人按鈕 */}
+              {myLevel === 99 && u.name !== myName && kickUser && (
+                <button
+                  className="kick-btn"
+                  onClick={(e) => {
+                    e.stopPropagation(); // 防止觸發選擇私聊
+                    console.log("kickUser clicked:", u.name);
+                    kickUser(u.name);
+                  }}
+                >
+                  踢出
+                </button>
+              )}
             </div>
           );
-        })
-      }
+        })}
     </div>
   );
 }

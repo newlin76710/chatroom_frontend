@@ -352,6 +352,22 @@ export default function ChatApp() {
     });
   }
 
+  useEffect(() => {
+    socket.on("kicked", ({ by }) => {
+      alert(`你已被 ${by} 踢出聊天室`);
+      // 清空狀態 / 導回首頁
+      window.location.href = "/";
+    });
+
+    socket.on("kickFailed", ({ reason }) => {
+      alert(reason);
+    });
+
+    return () => {
+      socket.off("kicked");
+      socket.off("kickFailed");
+    };
+  }, [socket]);
 
   return (
     <div className="chat-layout">
@@ -451,7 +467,14 @@ export default function ChatApp() {
           setChatMode={setChatMode}
           userListCollapsed={userListCollapsed}
           setUserListCollapsed={setUserListCollapsed}
+          kickUser={(targetName) => {
+            console.log("emit kickUser:", targetName, room);
+            socket.emit("kickUser", { room, targetName });
+          }}
+          myLevel={level} // 自己等級
+          myName={name}   // 自己名字
         />
+
       </div>
     </div>
   );
