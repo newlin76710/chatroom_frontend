@@ -372,7 +372,6 @@ export default function ChatApp() {
               <button onClick={send} disabled={cooldown}>發送</button>
             </div>
 
-            <Listener socket={socket} room={room} name={name} />
             {showSongPanel && (
               <SongPanel
                 socket={socket}
