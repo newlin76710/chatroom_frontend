@@ -1,4 +1,6 @@
+// ChatApp.jsx
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
 import MessageList from "./MessageList";
 import VideoPlayer from "./VideoPlayer";
@@ -7,6 +9,7 @@ import Listener from "./Listener";
 import UserList from "./UserList";
 import { aiAvatars } from "./aiConfig";
 import "./ChatApp.css";
+
 
 const BACKEND = import.meta.env.VITE_BACKEND_URL || "http://localhost:10000";
 
@@ -28,12 +31,13 @@ const formatLv = (lv) => String(lv).padStart(2, "0");
 let globalSocket = null;
 if (!globalSocket) {
   globalSocket = io(BACKEND, {
-    transports: ["websocket"], // 強制使用 websocket
-    withCredentials: true,     // 配合後端 cors
+    transports: ["websocket"],
+    withCredentials: true,
   });
 }
 
 export default function ChatApp() {
+  const navigate = useNavigate();
   const [room] = useState("public");
   const [name, setName] = useState("");
   const [level, setLevel] = useState(1);
@@ -57,12 +61,12 @@ export default function ChatApp() {
   const [expTips, setExpTips] = useState([]);
   const [levelUpTips, setLevelUpTips] = useState([]);
 
-  // --- 初始化 localStorage ---
+  // --- 初始化 sessionStorage ---
   useEffect(() => {
-    const storedName = localStorage.getItem("name");
-    const storedLevel = parseInt(localStorage.getItem("level")) || 1;
-    const storedExp = parseInt(localStorage.getItem("exp")) || 0;
-    const storedGender = localStorage.getItem("gender") || "女";
+    const storedName = sessionStorage.getItem("name");
+    const storedLevel = parseInt(sessionStorage.getItem("level")) || 1;
+    const storedExp = parseInt(sessionStorage.getItem("exp")) || 0;
+    const storedGender = sessionStorage.getItem("gender") || "女";
 
     if (storedName) setName(safeText(storedName));
     setLevel(storedLevel);
@@ -87,39 +91,34 @@ export default function ChatApp() {
             avatar: u?.avatar && u.avatar !== "" ? u.avatar : aiAvatars[u?.name] || "/avatars/g01.gif",
           }))
           .sort((a, b) => {
-            // 真人 (account) 優先，再等級排序
             if (a.type === "account" && b.type !== "account") return -1;
             if (a.type !== "account" && b.type === "account") return 1;
             return b.level - a.level;
           })
       );
 
-      // 找自己資料，保證對應正確的 type
       const me = list.find(
         (u) =>
           safeText(u.name || u.user) === name &&
-          (u.type || "guest") === (localStorage.getItem("type") || "guest")
+          (u.type || "guest") === (sessionStorage.getItem("type") || "guest")
       );
       if (!me) return;
 
-      // 更新 LV
       if (me.level > level) {
         setLevel(me.level || 1);
         setLevelUpTips((s) => [...s, { id: Date.now(), value: "LV UP!" }]);
-        localStorage.setItem("level", me.level || 1);
+        sessionStorage.setItem("level", me.level || 1);
       }
 
-      // 更新 EXP
       if (me.exp > exp) {
         setExp(me.exp || 0);
         setExpTips((s) => [...s, { id: Date.now(), value: `+${me.exp - exp}` }]);
-        localStorage.setItem("exp", me.exp || 0);
+        sessionStorage.setItem("exp", me.exp || 0);
       }
 
-      // 更新 gender
       if (me.gender && me.gender !== gender) {
         setGender(me.gender);
-        localStorage.setItem("gender", me.gender);
+        sessionStorage.setItem("gender", me.gender);
       }
     };
 
@@ -127,7 +126,7 @@ export default function ChatApp() {
     return () => socket.off("updateUsers", handleUpdateUsers);
   }, [socket, name, level, exp, gender]);
 
-  // --- 移除飄字 ---
+  // --- 飄字 ---
   useEffect(() => {
     if (expTips.length > 0) {
       const timer = setTimeout(() => setExpTips((s) => s.slice(1)), 1000);
@@ -181,40 +180,33 @@ export default function ChatApp() {
     };
   }, [socket]);
 
-  // --- 自動 joinRoom ---
+  // --- 自動 joinRoom 帶 token ---
   useEffect(() => {
     if (joined || !name) return;
-    const token = localStorage.getItem("token") || localStorage.getItem("guestToken");
-    const type = localStorage.getItem("type") || "guest";
+    const token = sessionStorage.getItem("token") || sessionStorage.getItem("guestToken");
+    const type = sessionStorage.getItem("type") || "guest";
+
     socket.emit("joinRoom", { room, user: { name, type, token } });
     setJoined(true);
   }, [room, socket, joined, name]);
 
   // --- 訪客登入 ---
-  // --- 訪客登入 ---
   const loginGuest = async () => {
     try {
-      // 清掉舊資料
-      localStorage.removeItem("name");
-      localStorage.removeItem("level");
-      localStorage.removeItem("exp");
-      localStorage.removeItem("gender");
-      localStorage.removeItem("type");
-      localStorage.removeItem("guestToken");
-
-      // 生成唯一訪客名稱
+      sessionStorage.clear();
       const guestName = `訪客${Date.now()}${Math.floor(Math.random() * 999)}`;
 
       const res = await fetch(`${BACKEND}/auth/guest`, { method: "POST" });
       const data = await res.json();
       const safeName = safeText(data.name || guestName);
 
-      localStorage.setItem("guestToken", data.guestToken);
-      localStorage.setItem("name", safeName);
-      localStorage.setItem("type", "guest");
-      localStorage.setItem("level", data.level || 1);
-      localStorage.setItem("exp", data.exp || 0);
-      localStorage.setItem("gender", data.gender || "女");
+      sessionStorage.setItem("guestToken", data.guestToken);
+      sessionStorage.setItem("token", data.guestToken);
+      sessionStorage.setItem("name", safeName);
+      sessionStorage.setItem("type", "guest");
+      sessionStorage.setItem("level", data.level || 1);
+      sessionStorage.setItem("exp", data.exp || 0);
+      sessionStorage.setItem("gender", data.gender || "女");
 
       setName(safeName);
       setLevel(data.level || 1);
@@ -231,23 +223,13 @@ export default function ChatApp() {
     }
   };
 
-  // --- 離開房間清理 + 斷線 ---
+  // --- 離開房間 / 斷線 ---
   const leaveRoom = () => {
     try {
-      // 先告訴後端自己離開
       socket.emit("stop-listening", { room, listenerId: name });
       socket.emit("leaveRoom", { room, user: { name } });
-
-      // 清理 localStorage
-      localStorage.clear();
-
-      // 斷開 WebRTC 音訊
-      // 這裡如果有 SongPanel 的 ref，可呼叫它的 leaveRoom 或 stopListening
-
-      // 斷開 Socket
+      sessionStorage.clear();
       socket.disconnect();
-
-      // 導回登入頁
       window.location.href = "/login";
     } catch (e) {
       console.error("離開房間失敗", e);
@@ -264,7 +246,6 @@ export default function ChatApp() {
         socket.disconnect();
       } catch { }
     };
-
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [socket, room, name]);
@@ -272,7 +253,6 @@ export default function ChatApp() {
   // --- 發訊息 ---
   const send = () => {
     if (cooldown || !text.trim() || (chatMode !== "public" && !target)) return;
-
     const timestamp = new Date().toLocaleTimeString();
 
     socket.emit("message", {
@@ -312,154 +292,111 @@ export default function ChatApp() {
   async function uploadSong(blob) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-
       reader.onloadend = async () => {
         try {
           const base64 = reader.result.split(",")[1];
-
-          const res = await fetch(
-            `${import.meta.env.VITE_BACKEND_URL || "http://localhost:10000"}/song/upload`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                audioBase64: base64,
-                singer: name, // ← 用目前登入者名稱
-              }),
-            }
-          );
-
-          if (!res.ok) {
-            console.error("uploadSong http error", res.status);
-            return reject("http error");
-          }
-
+          const res = await fetch(`${BACKEND}/song/upload`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ audioBase64: base64, singer: name }),
+          });
+          if (!res.ok) return reject("http error");
           const data = await res.json();
-          console.log("🎵 uploadSong success:", data.url);
-
-          // 🔥 關鍵：一定要回傳字串
-          resolve(data.url); // "/songs/xxxx.webm"
+          resolve(data.url);
         } catch (err) {
-          console.error("uploadSong failed", err);
           reject(err);
         }
       };
-
       reader.onerror = reject;
       reader.readAsDataURL(blob);
     });
   }
 
+  // --- 監聽 forceLogout ---
   useEffect(() => {
-    socket.on("kicked", ({ by }) => {
-      alert(`你已被 ${by} 踢出聊天室`);
-      // 清空狀態 / 導回首頁
-      window.location.href = "/";
+    socket.on("forceLogout", ({ by }) => {
+      sessionStorage.setItem("forceLogoutBy", by);
+      sessionStorage.setItem("blockedUntil", Date.now() + 5000); // 5 秒
+      window.location.href = "/login";
     });
-
-    socket.on("kickFailed", ({ reason }) => {
-      alert(reason);
-    });
+    socket.on("kickFailed", ({ reason }) => window.alert(reason));
 
     return () => {
-      socket.off("kicked");
+      socket.off("forceLogout");
       socket.off("kickFailed");
     };
-  }, [socket]);
+  }, [socket, navigate]);
 
   return (
     <div className="chat-layout">
+      {/* 左側聊天區 */}
       <div className="chat-left">
         <div className="chat-title">尋夢園男歡女愛聊天室</div>
-
         {!joined ? (
           <button onClick={loginGuest}>訪客登入</button>
         ) : (
-          <div className="chat-toolbar">
-            <span style={{ position: "relative" }}>
-              Hi [Lv.{formatLv(level)}] {name} ({gender}) EXP:{exp}
-              <span className="exp-tip-inline">
-                {expTips.map((tip) => <span key={tip.id} className="exp-tip">{tip.value}</span>)}
+          <>
+            <div className="chat-toolbar">
+              <span>
+                Hi [Lv.{formatLv(level)}] {name} ({gender}) EXP:{exp}
+                <span className="exp-tip-inline">
+                  {expTips.map((tip) => <span key={tip.id} className="exp-tip">{tip.value}</span>)}
+                </span>
+                <span className="levelup-tip-inline">
+                  {levelUpTips.map((tip) => <span key={tip.id} className="levelup-tip">{tip.value}</span>)}
+                </span>
               </span>
-              <span className="levelup-tip-inline">
-                {levelUpTips.map((tip) => <span key={tip.id} className="levelup-tip">{tip.value}</span>)}
-              </span>
-            </span>
-            <button onClick={leaveRoom}>離開</button>
-
-            <div className="video-request">
-              <input
-                value={videoUrl}
-                onChange={(e) => setVideoUrl(e.target.value)}
-                placeholder="YouTube 連結"
-              />
-              <button onClick={playVideo}>🎵 點播</button>
+              <button onClick={leaveRoom}>離開</button>
+              <div className="video-request">
+                <input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="YouTube 連結" />
+                <button onClick={playVideo}>🎵 點播</button>
+              </div>
+              <button onClick={() => setShowSongPanel(!showSongPanel)}>🎤 唱歌</button>
             </div>
 
-            <button onClick={() => setShowSongPanel(!showSongPanel)}>🎤 唱歌</button>
-          </div>
-        )}
+            <MessageList messages={messages} name={name} typing={typing} messagesEndRef={messagesEndRef} />
 
-        <MessageList messages={messages} name={name} typing={typing} messagesEndRef={messagesEndRef} />
+            <div className="chat-input">
+              <label><input type="radio" checked={chatMode === "public"} onChange={() => { setChatMode("public"); setTarget(""); }} /> 公開</label>
+              <label><input type="radio" checked={chatMode === "publicTarget"} onChange={() => setChatMode("publicTarget")} /> 公開對象</label>
+              <label><input type="radio" checked={chatMode === "private"} onChange={() => setChatMode("private")} /> 私聊</label>
+              {chatMode !== "public" && (
+                <select value={target} onChange={(e) => setTarget(e.target.value)}>
+                  <option value="">選擇對象</option>
+                  {userList.filter((u) => u.name !== name).map((u) => (
+                    <option key={u.id} value={u.name}>{u.name}</option>
+                  ))}
+                </select>
+              )}
+              <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder={placeholder} disabled={cooldown} />
+              <button onClick={send} disabled={cooldown}>發送</button>
+            </div>
 
-        <div className="chat-input">
-          <label>
-            <input type="radio" checked={chatMode === "public"} onChange={() => { setChatMode("public"); setTarget(""); }} /> 公開
-          </label>
-          <label>
-            <input type="radio" checked={chatMode === "publicTarget"} onChange={() => setChatMode("publicTarget")} /> 公開對象
-          </label>
-          <label>
-            <input type="radio" checked={chatMode === "private"} onChange={() => setChatMode("private")} /> 私聊
-          </label>
-
-          {chatMode !== "public" && (
-            <select value={target} onChange={(e) => setTarget(e.target.value)}>
-              <option value="">選擇對象</option>
-              {userList.filter((u) => u.name !== name).map((u) => (
-                <option key={u.id} value={u.name}>{u.name}</option>
-              ))}
-            </select>
-          )}
-          <input
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && send()}
-            placeholder={placeholder}
-            disabled={cooldown}
-          />
-          <button onClick={send} disabled={cooldown}>發送</button>
-        </div>
-        {/* 🔥 聽歌端：一定要永遠存在 */}
-        <Listener
-          socket={socket}
-          room={room}
-          name={name}
-        />
-        {showSongPanel && (
-          <SongPanel
-            socket={socket}
-            room={room}
-            name={name}
-            uploadSong={uploadSong}
-            userList={userList}
-            chatMode={chatMode}
-            setChatMode={setChatMode}
-            target={target}
-            setTarget={setTarget}
-            onClose={() => setShowSongPanel(false)}
-            inline
-          />
+            <Listener socket={socket} room={room} name={name} />
+            {showSongPanel && (
+              <SongPanel
+                socket={socket}
+                room={room}
+                name={name}
+                uploadSong={uploadSong}
+                userList={userList}
+                chatMode={chatMode}
+                setChatMode={setChatMode}
+                target={target}
+                setTarget={setTarget}
+                onClose={() => setShowSongPanel(false)}
+                inline
+              />
+            )}
+          </>
         )}
       </div>
 
+      {/* 右側使用者列表 & 影片 */}
       <div className="chat-right">
         <div className="youtube-container">
           <VideoPlayer video={currentVideo} extractVideoID={extractVideoID} onClose={() => setCurrentVideo(null)} />
         </div>
-
         <UserList
           userList={userList}
           target={target}
@@ -467,14 +404,10 @@ export default function ChatApp() {
           setChatMode={setChatMode}
           userListCollapsed={userListCollapsed}
           setUserListCollapsed={setUserListCollapsed}
-          kickUser={(targetName) => {
-            console.log("emit kickUser:", targetName, room);
-            socket.emit("kickUser", { room, targetName });
-          }}
-          myLevel={level} // 自己等級
-          myName={name}   // 自己名字
+          kickUser={(targetName) => socket.emit("kickUser", { room, targetName })}
+          myLevel={level}
+          myName={name}
         />
-
       </div>
     </div>
   );

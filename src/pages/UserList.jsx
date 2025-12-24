@@ -27,7 +27,7 @@ export default function UserList({
       {!userListCollapsed &&
         userList.map((u, idx) => {
           const avatarUrl = u.avatar || aiAvatars[u.name];
-
+          //console.log(userList)
           return (
             <div
               key={`${u.name}-${idx}`} // 修正 key 問題
@@ -43,7 +43,7 @@ export default function UserList({
               {u.name} [Lv.{formatLv(u.level)}] ({u.gender})
 
               {/* 如果自己是 99 等，才顯示踢人按鈕 */}
-              {myLevel === 99 && u.name !== myName && kickUser && (
+              {myLevel === 99 && u.name !== myName && u.type !== "AI" && kickUser && (
                 <button
                   className="kick-btn"
                   onClick={(e) => {

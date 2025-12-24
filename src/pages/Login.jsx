@@ -1,5 +1,5 @@
 // Login.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { aiAvatars } from "./aiConfig"; // AI 預設頭像列表
 
@@ -29,17 +29,29 @@ const buttonStyle = {
 
 export default function Login() {
   const navigate = useNavigate();
-
   const [mode, setMode] = useState("guest"); // guest | login | register
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [gender, setGender] = useState("女");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
-  const [avatar, setAvatar] = useState(""); // 新增 avatar 狀態
+  const [avatar, setAvatar] = useState(""); // 頭像
+
+  // 檢查是否被禁止登入
+  useEffect(() => {
+    const blockedUntil = sessionStorage.getItem("blockedUntil");
+    if (blockedUntil && Date.now() < parseInt(blockedUntil)) {
+      alert("你剛剛被踢出，請等待 5 秒後再登入");
+    }
+  }, []);
 
   // 訪客登入
   const guestLogin = async () => {
+    const blockedUntil = sessionStorage.getItem("blockedUntil");
+    if (blockedUntil && Date.now() < parseInt(blockedUntil)) {
+      return alert("你剛剛被踢出，請等待 5 秒後再登入");
+    }
+
     try {
       const res = await fetch(`${BACKEND}/auth/guest`, {
         method: "POST",
@@ -49,11 +61,11 @@ export default function Login() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "訪客登入失敗");
 
-      localStorage.setItem("guestToken", data.guestToken);
-      localStorage.setItem("name", data.name);
-      localStorage.setItem("gender", data.gender);
-      localStorage.setItem("last_login", data.last_login);
-      localStorage.setItem("type", "guest");
+      sessionStorage.setItem("guestToken", data.guestToken);
+      sessionStorage.setItem("name", data.name);
+      sessionStorage.setItem("gender", data.gender);
+      sessionStorage.setItem("last_login", data.last_login);
+      sessionStorage.setItem("type", "guest");
 
       navigate("/chat");
     } catch (e) {
@@ -63,6 +75,11 @@ export default function Login() {
 
   // 帳號登入
   const accountLogin = async () => {
+    const blockedUntil = sessionStorage.getItem("blockedUntil");
+    if (blockedUntil && Date.now() < parseInt(blockedUntil)) {
+      return alert("你剛剛被踢出，請等待 5 秒後再登入");
+    }
+
     if (!username || !password) return alert("請輸入帳號與密碼");
 
     try {
@@ -74,12 +91,12 @@ export default function Login() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "登入失敗");
 
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("name", data.name);
-      localStorage.setItem("gender", data.gender);
-      localStorage.setItem("avatar", data.avatar || ""); // 儲存 avatar
-      localStorage.setItem("last_login", data.last_login);
-      localStorage.setItem("type", "account");
+      sessionStorage.setItem("token", data.token);
+      sessionStorage.setItem("name", data.name);
+      sessionStorage.setItem("gender", data.gender);
+      sessionStorage.setItem("avatar", data.avatar || "");
+      sessionStorage.setItem("last_login", data.last_login);
+      sessionStorage.setItem("type", "account");
 
       navigate("/chat");
     } catch (e) {
