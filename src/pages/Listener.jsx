@@ -1,91 +1,82 @@
-// Listener.jsx
 import { useEffect, useRef } from "react";
+import { ICE_CONFIG } from "./webrtcConfig";
 
 export default function Listener({ socket, room }) {
-  const audioRef = useRef(null);
   const pcRef = useRef(null);
-  console.log("joinRoom", room);
+  const audioRef = useRef(null);
+  const activeSessionRef = useRef(null);
+
   useEffect(() => {
-    if (pcRef.current) return;
-    const pc = new RTCPeerConnection({
-      iceServers: [
-        {
-          urls: "stun:stun.relay.metered.ca:80",
-        },
-        {
-          urls: "turn:global.relay.metered.ca:80",
-          username: "8377acb6c166cbf568e9e013",
-          credential: "v+uDnYMJ5YIejFhv",
-        },
-        {
-          urls: "turn:global.relay.metered.ca:80?transport=tcp",
-          username: "8377acb6c166cbf568e9e013",
-          credential: "v+uDnYMJ5YIejFhv",
-        },
-        {
-          urls: "turn:global.relay.metered.ca:443",
-          username: "8377acb6c166cbf568e9e013",
-          credential: "v+uDnYMJ5YIejFhv",
-        },
-        {
-          urls: "turns:global.relay.metered.ca:443?transport=tcp",
-          username: "8377acb6c166cbf568e9e013",
-          credential: "v+uDnYMJ5YIejFhv",
-        },
-      ],
-    });
+    async function onOffer({ offer, sessionId }) {
+      if (pcRef.current) pcRef.current.close();
 
-    pcRef.current = pc;
+      activeSessionRef.current = sessionId;
 
-    pc.ontrack = e => {
-      console.log("🎧 ontrack");
-      audioRef.current.srcObject = e.streams[0];
-    };
+      const pc = new RTCPeerConnection(ICE_CONFIG);
+      pcRef.current = pc;
 
-    pc.onicecandidate = e => {
-      if (e.candidate) {
-        socket.emit("webrtc-ice", { room, candidate: e.candidate });
-      }
-    };
+      pc.ontrack = e => {
+        audioRef.current.srcObject = e.streams[0];
+      };
 
-    socket.on("webrtc-offer", async ({ offer }) => {
-      console.log("📩 offer received");
+      pc.onicecandidate = e => {
+        if (e.candidate) {
+          socket.emit("webrtc-ice", {
+            room,
+            candidate: e.candidate,
+            sessionId,
+          });
+        }
+      };
+
       await pc.setRemoteDescription(offer);
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
-      socket.emit("webrtc-answer", { room, answer });
-    });
 
-    socket.on("webrtc-ice", async ({ candidate }) => {
-      await pc.addIceCandidate(candidate);
-    });
+      socket.emit("webrtc-answer", { room, answer, sessionId });
+    }
+
+    function onIce({ candidate, sessionId }) {
+      if (sessionId !== activeSessionRef.current) return;
+      pcRef.current?.addIceCandidate(candidate);
+    }
+
+    function onStop() {
+      pcRef.current?.close();
+      pcRef.current = null;
+      activeSessionRef.current = null;
+      if (audioRef.current) {
+        audioRef.current.srcObject = null;
+        audioRef.current.pause();
+      }
+    }
+
+    socket.on("webrtc-offer", onOffer);
+    socket.on("webrtc-ice", onIce);
+    socket.on("webrtc-stop", onStop);
 
     return () => {
-      pc.close();
-      socket.off("webrtc-offer");
-      socket.off("webrtc-ice");
+      socket.off("webrtc-offer", onOffer);
+      socket.off("webrtc-ice", onIce);
+      socket.off("webrtc-stop", onStop);
     };
   }, [socket, room]);
 
-  // 🔑 autoplay 解鎖（超重要）
+  function stopListening() {
+    pcRef.current?.close();
+    pcRef.current = null;
+    activeSessionRef.current = null;
+    if (audioRef.current) {
+      audioRef.current.srcObject = null;
+      audioRef.current.pause();
+    }
+  }
+
   return (
     <>
       <audio ref={audioRef} autoPlay playsInline />
-      <button
-        onClick={() => {
-          audioRef.current.muted = false;
-          audioRef.current.play();
-        }}
-      >
-        🔊 開始收聽
-      </button>
-      <button
-        onClick={() => {
-          audioRef.current.pause();
-        }}
-      >
-        ⏹️ 停止收聽
-      </button>
+      <button onClick={() => audioRef.current.play()}>🔊 開始收聽</button>
+      <button onClick={stopListening}>⏹️ 停止收聽</button>
     </>
   );
 }

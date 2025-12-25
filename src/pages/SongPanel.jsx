@@ -1,68 +1,41 @@
-// SongPanel.jsx
-import { useRef, useState } from "react";
-
+import { useRef, useEffect, useState } from "react";
+import { ICE_CONFIG } from "./webrtcConfig";
 export default function SongPanel({ socket, room, name }) {
   const pcRef = useRef(null);
   const streamRef = useRef(null);
+  const sessionIdRef = useRef(null);
   const [singing, setSinging] = useState(false);
-  console.log("joinRoom", room);
+
   async function startSing() {
     if (singing) return;
 
-    console.log("🎤 startSing");
+    sessionIdRef.current = crypto.randomUUID();
 
-    // 1. 麥克風
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     streamRef.current = stream;
 
-    // 2. PeerConnection
-    const pc = new RTCPeerConnection({
-      iceServers: [
-        {
-          urls: "stun:stun.relay.metered.ca:80",
-        },
-        {
-          urls: "turn:global.relay.metered.ca:80",
-          username: "8377acb6c166cbf568e9e013",
-          credential: "v+uDnYMJ5YIejFhv",
-        },
-        {
-          urls: "turn:global.relay.metered.ca:80?transport=tcp",
-          username: "8377acb6c166cbf568e9e013",
-          credential: "v+uDnYMJ5YIejFhv",
-        },
-        {
-          urls: "turn:global.relay.metered.ca:443",
-          username: "8377acb6c166cbf568e9e013",
-          credential: "v+uDnYMJ5YIejFhv",
-        },
-        {
-          urls: "turns:global.relay.metered.ca:443?transport=tcp",
-          username: "8377acb6c166cbf568e9e013",
-          credential: "v+uDnYMJ5YIejFhv",
-        },
-      ],
-    });
-
+    const pc = new RTCPeerConnection(ICE_CONFIG);
     pcRef.current = pc;
 
-    // 3. 加音軌
-    stream.getTracks().forEach(track => pc.addTrack(track, stream));
+    stream.getTracks().forEach(t => pc.addTrack(t, stream));
 
-    // 4. ICE
     pc.onicecandidate = e => {
       if (e.candidate) {
-        socket.emit("webrtc-ice", { room, candidate: e.candidate });
+        socket.emit("webrtc-ice", {
+          room,
+          candidate: e.candidate,
+          sessionId: sessionIdRef.current,
+        });
       }
     };
 
-    // 5. Offer
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
 
     socket.emit("webrtc-offer", {
       room,
       offer,
+      sessionId: sessionIdRef.current,
       singer: name,
     });
 
@@ -70,34 +43,40 @@ export default function SongPanel({ socket, room, name }) {
   }
 
   function stopSing() {
-    console.log("🛑 stopSing");
-
-    streamRef.current?.getTracks().forEach(t => t.stop());
     pcRef.current?.close();
+    streamRef.current?.getTracks().forEach(t => t.stop());
 
-    streamRef.current = null;
     pcRef.current = null;
-    setSinging(false);
+    streamRef.current = null;
+    sessionIdRef.current = null;
 
     socket.emit("webrtc-stop", { room });
+    setSinging(false);
   }
 
-  // 6. 接收 answer
-  socket.off("webrtc-answer").on("webrtc-answer", async ({ answer }) => {
-    await pcRef.current?.setRemoteDescription(answer);
-  });
+  useEffect(() => {
+    function onAnswer({ answer, sessionId }) {
+      if (sessionId !== sessionIdRef.current) return;
+      pcRef.current?.setRemoteDescription(answer);
+    }
 
-  socket.off("webrtc-ice").on("webrtc-ice", async ({ candidate }) => {
-    await pcRef.current?.addIceCandidate(candidate);
-  });
+    function onIce({ candidate, sessionId }) {
+      if (sessionId !== sessionIdRef.current) return;
+      pcRef.current?.addIceCandidate(candidate);
+    }
+
+    socket.on("webrtc-answer", onAnswer);
+    socket.on("webrtc-ice", onIce);
+
+    return () => {
+      socket.off("webrtc-answer", onAnswer);
+      socket.off("webrtc-ice", onIce);
+    };
+  }, [socket]);
 
   return (
-    <div>
-      {!singing ? (
-        <button onClick={startSing}>開始唱</button>
-      ) : (
-        <button onClick={stopSing}>停止</button>
-      )}
-    </div>
+    <button onClick={singing ? stopSing : startSing}>
+      {singing ? "停止唱歌" : "開始唱"}
+    </button>
   );
 }
