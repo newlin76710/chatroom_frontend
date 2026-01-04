@@ -73,6 +73,7 @@ body {
 }
 
 .chat-toolbar button {
+  margin-left: 6px;
   padding: 4px 8px;
   background: #6200ee;
   border: none;

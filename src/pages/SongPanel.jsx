@@ -1,62 +1,59 @@
 // SongPanel.jsx
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 
 export default function SongPanel({ socket, room, name }) {
   const pcRef = useRef(null);
   const streamRef = useRef(null);
+  const pendingCandidates = useRef([]);
   const [singing, setSinging] = useState(false);
+
   console.log("joinRoom", room);
+
   async function startSing() {
     if (singing) return;
 
     console.log("🎤 startSing");
 
-    // 1. 麥克風
+    // 1. 取得麥克風
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     streamRef.current = stream;
 
-    // 2. PeerConnection
+    // 2. 建立 PeerConnection
     const pc = new RTCPeerConnection({
       iceServers: [
+        { urls: "stun:stun.relay.metered.ca:80" },
         {
-          urls: "stun:stun.relay.metered.ca:80",
-        },
-        {
-          urls: "turn:global.relay.metered.ca:80",
-          username: "8377acb6c166cbf568e9e013",
-          credential: "v+uDnYMJ5YIejFhv",
-        },
-        {
-          urls: "turn:global.relay.metered.ca:80?transport=tcp",
-          username: "8377acb6c166cbf568e9e013",
-          credential: "v+uDnYMJ5YIejFhv",
-        },
-        {
-          urls: "turn:global.relay.metered.ca:443",
-          username: "8377acb6c166cbf568e9e013",
-          credential: "v+uDnYMJ5YIejFhv",
-        },
-        {
-          urls: "turns:global.relay.metered.ca:443?transport=tcp",
-          username: "8377acb6c166cbf568e9e013",
-          credential: "v+uDnYMJ5YIejFhv",
+          urls: [
+            "turn:turn.ek21.com:3478?transport=udp",
+            "turn:turn.ek21.com:3478?transport=tcp"
+          ],
+          username: "webrtcuser",
+          credential: "Abc76710",
         },
       ],
     });
 
     pcRef.current = pc;
 
-    // 3. 加音軌
+    // 3. 加入音軌
     stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
-    // 4. ICE
+    // 4. ICE state log
+    pc.oniceconnectionstatechange = () => {
+      console.log("ICE state:", pc.iceConnectionState);
+    };
+    pc.onconnectionstatechange = () => {
+      console.log("PC state:", pc.connectionState);
+    };
+
+    // 5. ICE candidate
     pc.onicecandidate = e => {
       if (e.candidate) {
         socket.emit("webrtc-ice", { room, candidate: e.candidate });
       }
     };
 
-    // 5. Offer
+    // 6. 建立 offer
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
 
@@ -77,19 +74,50 @@ export default function SongPanel({ socket, room, name }) {
 
     streamRef.current = null;
     pcRef.current = null;
+    pendingCandidates.current = [];
     setSinging(false);
 
     socket.emit("webrtc-stop", { room });
   }
 
-  // 6. 接收 answer
-  socket.off("webrtc-answer").on("webrtc-answer", async ({ answer }) => {
-    await pcRef.current?.setRemoteDescription(answer);
-  });
+  // 7. socket.on 事件（useEffect 只註冊一次）
+  useEffect(() => {
+    const onAnswer = async ({ answer }) => {
+      if (!pcRef.current) return;
 
-  socket.off("webrtc-ice").on("webrtc-ice", async ({ candidate }) => {
-    await pcRef.current?.addIceCandidate(candidate);
-  });
+      await pcRef.current.setRemoteDescription(answer);
+
+      // 先前 queue 的 candidate
+      for (const c of pendingCandidates.current) {
+        await pcRef.current.addIceCandidate(c);
+      }
+      pendingCandidates.current = [];
+    };
+
+    const onIce = async ({ candidate }) => {
+      if (!pcRef.current || !candidate) return;
+
+      // 如果 remoteDescription 還沒 set，先放 queue
+      if (!pcRef.current.remoteDescription) {
+        pendingCandidates.current.push(candidate);
+        return;
+      }
+
+      try {
+        await pcRef.current.addIceCandidate(candidate);
+      } catch (err) {
+        console.warn("addIceCandidate failed", err);
+      }
+    };
+
+    socket.on("webrtc-answer", onAnswer);
+    socket.on("webrtc-ice", onIce);
+
+    return () => {
+      socket.off("webrtc-answer", onAnswer);
+      socket.off("webrtc-ice", onIce);
+    };
+  }, [socket]);
 
   return (
     <div>
