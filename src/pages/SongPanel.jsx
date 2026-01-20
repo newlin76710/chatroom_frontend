@@ -12,13 +12,14 @@ export default function SongPanel({ socket, room, name }) {
     currentSinger: null,
   });
 
+  const isMyTurn = micState.currentSinger === name;
   const isIdle = !micState.currentSinger;
 
   /* ========================
-     🎤 開始唱（輪到自己才可唱）
+     🎤 開始唱（輪到才可唱）
   ======================== */
   async function startSing() {
-    if (singing || micState.currentSinger !== name) return;
+    if (singing || !isMyTurn) return;
 
     console.log("🎤 startSing");
 
@@ -43,10 +44,14 @@ export default function SongPanel({ socket, room, name }) {
     stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
     pc.onicecandidate = e => {
-      if (e.candidate) socket.emit("webrtc-ice", { room, candidate: e.candidate });
+      if (e.candidate) {
+        socket.emit("webrtc-ice", { room, candidate: e.candidate });
+      }
     };
 
-    pc.onconnectionstatechange = () => console.log("PC state:", pc.connectionState);
+    pc.onconnectionstatechange = () => {
+      console.log("PC state:", pc.connectionState);
+    };
 
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
@@ -79,7 +84,6 @@ export default function SongPanel({ socket, room, name }) {
      📡 Socket Events
   ======================== */
   useEffect(() => {
-    // WebRTC
     const onAnswer = async ({ answer }) => {
       if (!pcRef.current) return;
       await pcRef.current.setRemoteDescription(answer);
@@ -90,22 +94,24 @@ export default function SongPanel({ socket, room, name }) {
     };
 
     const onIce = async ({ candidate }) => {
-      if (!pcRef.current || !candidate) return;
+      if (!candidate) return;
+      if (!pcRef.current) return;
       if (!pcRef.current.remoteDescription) {
         pendingCandidates.current.push(candidate);
         return;
       }
-      try {
-        await pcRef.current.addIceCandidate(candidate);
-      } catch (e) {
-        console.warn("ICE error", e);
-      }
+      await pcRef.current.addIceCandidate(candidate);
     };
 
-    const onQueueUpdate = ({ queue, current }) => setMicState({ queue, currentSinger: current });
+    const onQueueUpdate = ({ queue, current }) => {
+      setMicState({ queue, currentSinger: current });
+    };
 
     const onRoomPhase = ({ phase, singer }) => {
-      if (phase === "singing" && singer === name && !singing) startSing();
+      if (phase === "singing" && singer === name && !singing) {
+        console.log("🚀 auto start sing!");
+        startSing();
+      }
     };
 
     socket.on("webrtc-answer", onAnswer);
@@ -137,26 +143,26 @@ export default function SongPanel({ socket, room, name }) {
   ======================== */
   return (
     <div style={{ padding: 12 }}>
-      {/* 排隊拿 Mic */}
+      {/* 沒人唱且自己不在隊列中 */}
       {isIdle && !micState.queue.includes(name) && (
         <button onClick={() => socket.emit("joinQueue", { room, singer: name })}>
           🎤 排隊拿 Mic
         </button>
       )}
 
-      {/* 輪到自己唱 */}
-      {micState.queue[0] === name && isIdle && (
+      {/* 輪到你 */}
+      {isIdle && micState.queue[0] === name && (
         <button onClick={startSing}>🎤 輪到你，開始唱</button>
       )}
 
-      {/* 正在唱按鈕（自己唱） */}
+      {/* 正在唱 / 放下 Mic */}
       {micState.currentSinger === name && (
-        <button onClick={stopSing} style={{ marginLeft: 10 }}>🛑 放下 Mic</button>
+        <button onClick={stopSing}>🛑 放下 Mic</button>
       )}
 
-      {/* 正在唱文字 */}
-      {micState.currentSinger && (
-        <p>🎶 {micState.currentSinger} 正在唱 {micState.currentSinger === name ? "（你自己）" : ""}</p>
+      {/* 顯示其他人正在唱 */}
+      {micState.currentSinger && micState.currentSinger !== name && (
+        <p>🎶 {micState.currentSinger} 正在唱</p>
       )}
 
       {/* 排隊列表 */}
