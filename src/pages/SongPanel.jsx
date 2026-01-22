@@ -1,144 +1,220 @@
+// SongPanel.jsx
 import { useRef, useState, useEffect } from "react";
+import io from "socket.io-client";
+import * as mediasoupClient from "mediasoup-client";
 
-export default function SongPanel({ socket, room, name }) {
-  const pcRef = useRef(null);
-  const streamRef = useRef(null);
-  const pendingCandidates = useRef([]);
+const SFU_URL = "http://220.135.33.190:30000";
 
+export default function SongPanel({ room, name }) {
+  const [socketConnected, setSocketConnected] = useState(false);
   const [singing, setSinging] = useState(false);
-  const [micState, setMicState] = useState({ queue: [], currentSinger: null });
+  const [consumers, setConsumers] = useState([]);
 
-  const isMyTurn = micState.currentSinger === name;
-  const isIdle = !micState.currentSinger;
+  const socketRef = useRef(null);
+  const deviceRef = useRef(null);
+  const sendTransportRef = useRef(null);
+  const recvTransportRef = useRef(null);
+  const producerRef = useRef(null);
 
   /* ========================
-     🎤 開始唱（輪到才可唱）
+     Socket 初始化
   ======================== */
-  async function startSing() {
-    if (singing || !isMyTurn) return;
+  useEffect(() => {
+    console.log("[SongPanel] init socket");
+    const socket = io(SFU_URL);
+    socketRef.current = socket;
 
-    console.log("🎤 startSing");
-
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    streamRef.current = stream;
-
-    const pc = new RTCPeerConnection({
-      iceServers: [
-        { urls: "stun:stun.relay.metered.ca:80" },
-        {
-          urls: [
-            "turn:turn.ek21.com:3478?transport=udp",
-            "turn:turn.ek21.com:3478?transport=tcp",
-          ],
-          username: "webrtcuser",
-          credential: "Abc76710",
-        },
-      ],
+    socket.on("connect", () => {
+      console.log("[SongPanel] socket connected", socket.id);
+      setSocketConnected(true);
     });
-    pcRef.current = pc;
 
-    stream.getTracks().forEach(track => pc.addTrack(track, stream));
+    socket.on("disconnect", () => {
+      console.log("[SongPanel] socket disconnected");
+    });
 
-    pc.onicecandidate = e => {
-      if (e.candidate) socket.emit("webrtc-ice", { room, candidate: e.candidate });
-    };
+    // 被別人搶 mic
+    socket.on("forceStop", () => {
+      console.warn("[SongPanel] 你被踢下 Mic");
+      stopSing(true);
+    });
 
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
+    // 收到新 producer，建立 consumer
+    socket.on("newProducer", async ({ producerId }) => {
+      console.log("[SongPanel] newProducer", producerId);
+      if (!deviceRef.current || !recvTransportRef.current) return;
 
-    socket.emit("webrtc-offer", { room, offer, singer: name });
+      try {
+        const consumerData = await new Promise(cb =>
+          socket.emit(
+            "consume",
+            { room, producerId, rtpCapabilities: deviceRef.current.rtpCapabilities },
+            cb
+          )
+        );
+        if (!consumerData) return;
 
-    setSinging(true);
-  }
+        const consumer = await recvTransportRef.current.consume({
+          id: consumerData.id,
+          producerId: consumerData.producerId,
+          kind: consumerData.kind,
+          rtpParameters: consumerData.rtpParameters,
+        });
+
+        const stream = new MediaStream([consumer.track]);
+        setConsumers(prev => [...prev, { consumer, stream }]);
+      } catch (err) {
+        console.error("[SongPanel] consume failed", err);
+      }
+    });
+
+    return () => socket.disconnect();
+  }, [room]);
 
   /* ========================
-     🛑 放下 Mic
+     搶 Mic 開始唱
   ======================== */
-  function stopSing() {
-    console.log("🛑 stopSing");
+  const startSing = async () => {
+    console.log("[SongPanel] 🔥 force start sing");
 
-    streamRef.current?.getTracks().forEach(t => t.stop());
-    pcRef.current?.close();
+    if (!socketConnected) return alert("尚未連線 SFU");
 
-    streamRef.current = null;
-    pcRef.current = null;
-    pendingCandidates.current = [];
+    // 通知 server：我要搶 mic
+    socketRef.current.emit("forceStartSing", { room, singer: name });
+
+    try {
+      // 1️⃣ 取得麥克風
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      console.log("[SongPanel] mic ok");
+
+      // 2️⃣ 建立 Mediasoup Device
+      const device = new mediasoupClient.Device();
+      deviceRef.current = device;
+
+      // 2a. 拿 router RTP capabilities
+      const routerRtpCapabilities = await new Promise((resolve) => {
+        socketRef.current.emit("getRouterRtpCapabilities", { room }, (data) => {
+          console.log("[SongPanel] routerRtpCapabilities received", data);
+          resolve(data);
+        });
+      });
+
+      await device.load({ routerRtpCapabilities });
+      console.log("[SongPanel] device loaded");
+
+      // 3️⃣ 建立 SendTransport
+      const sendData = await new Promise((resolve) => {
+        socketRef.current.emit(
+          "createWebRtcTransport",
+          { room, direction: "send" },
+          (data) => {
+            console.log("[SongPanel] send transport data:", data);
+            resolve(data);
+          }
+        );
+      });
+
+      const sendTransport = device.createSendTransport(sendData);
+      sendTransportRef.current = sendTransport;
+
+      sendTransport.on("connect", ({ dtlsParameters }, callback, errback) => {
+        console.log("[SongPanel] sendTransport connecting...");
+        socketRef.current.emit("connectTransport", { room, direction: "send", dtlsParameters }, callback);
+      });
+
+      sendTransport.on("produce", ({ kind, rtpParameters }, callback, errback) => {
+        console.log("[SongPanel] sendTransport produce event");
+        socketRef.current.emit("produce", { room, kind, rtpParameters }, (data) => {
+          console.log("[SongPanel] produce callback", data);
+          callback(data);
+        });
+      });
+
+      // 4️⃣ 發送音訊
+      console.log("[SongPanel] producing track...");
+      const producer = await sendTransport.produce({
+        track: stream.getAudioTracks()[0],
+        appData: { name } // 可加個辨識
+      });
+      console.log("[SongPanel] produce returned:", producer.id);
+      producerRef.current = producer;
+      setSinging(true);
+      console.log("[SongPanel] 🎤 singing state set to true");
+
+      // 5️⃣ 建立 RecvTransport（聽別人）
+      const recvData = await new Promise((resolve) => {
+        socketRef.current.emit(
+          "createWebRtcTransport",
+          { room, direction: "recv" },
+          (data) => {
+            console.log("[SongPanel] recv transport data:", data);
+            resolve(data);
+          }
+        );
+      });
+
+      const recvTransport = device.createRecvTransport(recvData);
+      recvTransportRef.current = recvTransport;
+
+      recvTransport.on("connect", ({ dtlsParameters }, callback, errback) => {
+        console.log("[SongPanel] recvTransport connecting...");
+        socketRef.current.emit("connectTransport", { room, direction: "recv", dtlsParameters }, callback);
+      });
+
+      console.log("[SongPanel] 🎧 RecvTransport ready, startSing complete");
+    } catch (err) {
+      console.error("[SongPanel] startSing failed", err);
+    }
+  };
+
+
+  /* ========================
+     停止唱
+  ======================== */
+  const stopSing = (forced = false) => {
+    console.log("[SongPanel] stopSing forced =", forced);
+
+    producerRef.current?.close();
+    sendTransportRef.current?.close();
+    recvTransportRef.current?.close();
+
+    producerRef.current = null;
+    sendTransportRef.current = null;
+    recvTransportRef.current = null;
+    deviceRef.current = null;
 
     setSinging(false);
 
-    socket.emit("leaveQueue", { room, singer: name });
-    socket.emit("webrtc-stop", { room });
-  }
+    if (!forced) {
+      socketRef.current.emit("stopSing", { room, singer: name });
+    }
+  };
 
   /* ========================
-     📡 Socket Events
-  ======================== */
-  useEffect(() => {
-    const onAnswer = async ({ answer }) => {
-      if (!pcRef.current) return;
-      await pcRef.current.setRemoteDescription(answer);
-      for (const c of pendingCandidates.current) await pcRef.current.addIceCandidate(c);
-      pendingCandidates.current = [];
-    };
-
-    const onIce = async ({ candidate }) => {
-      if (!pcRef.current || !candidate) return;
-      if (!pcRef.current.remoteDescription) pendingCandidates.current.push(candidate);
-      else await pcRef.current.addIceCandidate(candidate).catch(e => console.warn(e));
-    };
-
-    const onMicStateUpdate = ({ queue, currentSinger }) => {
-      console.log("[micStateUpdate]", queue, currentSinger);
-      setMicState({ queue, currentSinger });
-    };
-
-    const onRoomPhase = ({ phase, singer }) => {
-      if (phase === "singing" && singer === name && !singing) startSing();
-    };
-
-    socket.on("webrtc-answer", onAnswer);
-    socket.on("webrtc-ice", onIce);
-    socket.on("micStateUpdate", onMicStateUpdate);
-    socket.on("update-room-phase", onRoomPhase);
-    socket.on("webrtc-stop", () => {
-      if (singing) stopSing();
-    });
-
-    return () => {
-      socket.off("webrtc-answer", onAnswer);
-      socket.off("webrtc-ice", onIce);
-      socket.off("micStateUpdate", onMicStateUpdate);
-      socket.off("update-room-phase", onRoomPhase);
-      socket.off("webrtc-stop");
-    };
-  }, [socket, singing]);
-
-  /* ========================
-     🎛 UI
+     UI
   ======================== */
   return (
     <div style={{ padding: 12 }}>
-      {/* 沒人在唱，自己沒在隊列中 */}
-      {!micState.currentSinger && !micState.queue.includes(name) && (
-        <button onClick={() => socket.emit("joinQueue", { room, singer: name })}>
-          🎤 排隊拿 Mic
+      {!singing && (
+        <button onClick={startSing}>
+          🎤 開始唱（搶 Mic）
         </button>
       )}
 
-      {/* 正在輪到你唱（後端已設你為 currentSinger） */}
-      {micState.currentSinger === name && !singing && (
-        <button onClick={startSing}>🎤 輪到你，開始唱</button>
+      {singing && (
+        <button onClick={() => stopSing(false)}>
+          🛑 停止唱
+        </button>
       )}
 
-      {/* 正在唱 */}
-      {micState.currentSinger === name && singing && (
-        <button onClick={stopSing}>🛑 放下 Mic</button>
-      )}
-
-      {/* 顯示其他人正在唱 */}
-      {micState.currentSinger && micState.currentSinger !== name && (
-        <p>🎶 {micState.currentSinger} 正在唱</p>
-      )}
+      {consumers.map((c, i) => (
+        <audio
+          key={i}
+          ref={el => el && (el.srcObject = c.stream)}
+          autoPlay
+          playsInline
+        />
+      ))}
     </div>
   );
 }

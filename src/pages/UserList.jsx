@@ -14,7 +14,7 @@ export default function UserList({
   myName   // 新增自己名字
 }) {
   const formatLv = (lv) => String(lv).padStart(2, "0");
-
+  //console.log("userList:", userList);
   return (
     <div className={`user-list ${userListCollapsed ? "collapsed" : ""}`}>
       <div

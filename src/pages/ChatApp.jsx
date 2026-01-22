@@ -78,7 +78,7 @@ export default function ChatApp() {
   useEffect(() => {
     const handleUpdateUsers = (list = []) => {
       if (!Array.isArray(list)) return;
-
+      console.log("updateUsers list:", list);
       setUserList(
         list
           .map((u, i) => ({
