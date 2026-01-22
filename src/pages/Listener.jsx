@@ -1,8 +1,9 @@
+// Listener.jsx
 import { useState, useEffect, useRef } from "react";
 import io from "socket.io-client";
 import * as mediasoupClient from "mediasoup-client";
 
-const SFU_URL = "http://220.135.33.190:30000";
+const SFU_URL = "ws://turn.ek21.com:8443"; // Cloudflare 443 代理，不用加 port
 
 export default function Listener({ room }) {
   const [socketConnected, setSocketConnected] = useState(false);
@@ -18,7 +19,7 @@ export default function Listener({ room }) {
      初始化 Socket
   ======================== */
   useEffect(() => {
-    const socket = io(SFU_URL);
+    const socket = io(SFU_URL, { transports: ["websocket"] });
     socketRef.current = socket;
 
     socket.on("connect", () => {
@@ -28,6 +29,7 @@ export default function Listener({ room }) {
 
     socket.on("disconnect", () => {
       console.log("[Listener] socket disconnected");
+      setSocketConnected(false);
     });
 
     // 更新目前唱歌的人
@@ -38,35 +40,41 @@ export default function Listener({ room }) {
 
     // 有新 producer，自動 consume
     socket.on("newProducer", async ({ producerId }) => {
-      if (!deviceRef.current || !recvTransportRef.current) return;
-      try {
-        const consumerData = await new Promise(cb =>
-          socket.emit(
-            "consume",
-            { room, producerId, rtpCapabilities: deviceRef.current.rtpCapabilities },
-            cb
-          )
-        );
-        if (!consumerData) return;
-
-        const consumer = await recvTransportRef.current.consume({
-          id: consumerData.id,
-          producerId: consumerData.producerId,
-          kind: consumerData.kind,
-          rtpParameters: consumerData.rtpParameters,
-        });
-
-        const stream = new MediaStream([consumer.track]);
-        setConsumers(prev => [...prev, { consumer, stream }]);
-      } catch (err) {
-        console.error("[Listener] consume failed", err);
-      }
+      await consumeProducer(producerId);
     });
 
-    return () => {
-      socket.disconnect();
-    };
+    return () => socket.disconnect();
   }, [room]);
+
+  /* ========================
+     Consume Producer
+  ======================== */
+  const consumeProducer = async (producerId) => {
+    if (!deviceRef.current || !recvTransportRef.current) return;
+
+    try {
+      const consumerData = await new Promise((resolve) =>
+        socketRef.current.emit(
+          "consume",
+          { room, producerId, rtpCapabilities: deviceRef.current.rtpCapabilities },
+          resolve
+        )
+      );
+      if (!consumerData) return;
+
+      const consumer = await recvTransportRef.current.consume({
+        id: consumerData.id,
+        producerId: consumerData.producerId,
+        kind: consumerData.kind,
+        rtpParameters: consumerData.rtpParameters,
+      });
+
+      const stream = new MediaStream([consumer.track]);
+      setConsumers((prev) => [...prev, { consumer, stream }]);
+    } catch (err) {
+      console.error("[Listener] consumeProducer failed", err);
+    }
+  };
 
   /* ========================
      開始收聽
@@ -79,28 +87,29 @@ export default function Listener({ room }) {
       const device = new mediasoupClient.Device();
       deviceRef.current = device;
 
-      const routerRtpCapabilities = await new Promise(cb =>
-        socketRef.current.emit("getRouterRtpCapabilities", { room }, cb)
+      const routerRtpCapabilities = await new Promise((resolve) =>
+        socketRef.current.emit("getRouterRtpCapabilities", { room }, resolve)
       );
       await device.load({ routerRtpCapabilities });
 
       // RecvTransport
-      const recvData = await new Promise(cb =>
-        socketRef.current.emit("createWebRtcTransport", { room, direction: "recv" }, cb)
+      const recvData = await new Promise((resolve) =>
+        socketRef.current.emit("createWebRtcTransport", { room, direction: "recv" }, resolve)
       );
       const recvTransport = device.createRecvTransport(recvData);
       recvTransportRef.current = recvTransport;
 
       recvTransport.on("connect", ({ dtlsParameters }, cb) => {
-        socketRef.current.emit(
-          "connectTransport",
-          { room, direction: "recv", dtlsParameters },
-          cb
-        );
+        socketRef.current.emit("connectTransport", { room, direction: "recv", dtlsParameters }, cb);
       });
 
       setListening(true);
       console.log("[Listener] 開始收聽");
+
+      // 自動 consume 目前房間所有 producer
+      socketRef.current.emit("existingProducers", { room }, (existing) => {
+        existing?.forEach((pid) => consumeProducer(pid));
+      });
     } catch (err) {
       console.error("[Listener] startListening failed", err);
     }
@@ -140,7 +149,7 @@ export default function Listener({ room }) {
       {consumers.map((c, i) => (
         <audio
           key={i}
-          ref={el => el && (el.srcObject = c.stream)}
+          ref={(el) => el && (el.srcObject = c.stream)}
           autoPlay
           playsInline
         />
