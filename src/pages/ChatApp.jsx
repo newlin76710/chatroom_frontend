@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
 import MessageList from "./MessageList";
 import VideoPlayer from "./VideoPlayer";
-import SongPanel from "./SongPanel";
+import SongRoom from "./SongRoom";
 import Listener from "./Listener";
 import UserList from "./UserList";
 import { aiAvatars } from "./aiConfig";
@@ -378,28 +378,26 @@ export default function ChatApp() {
                   {levelUpTips.map((tip) => <span key={tip.id} className="levelup-tip">{tip.value}</span>)}
                 </span>
               </span>
+
               <button onClick={leaveRoom}>離開</button>
+
               <div className="video-request">
-                <input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="YouTube 連結" />
+                <input
+                  value={videoUrl}
+                  onChange={(e) => setVideoUrl(e.target.value)}
+                  placeholder="YouTube 連結"
+                />
                 <button onClick={playVideo}>🎵 點播</button>
               </div>
+
               <button onClick={() => setShowSongPanel(!showSongPanel)}>🎤 唱歌</button>
+
+              {/* 🎤 歌手 / 麥克風面板 */}
               {showSongPanel && (
-                <SongPanel
-                  socket={socket}
-                  room={room}
-                  name={name}
-                  uploadSong={uploadSong}
-                  userList={userList}
-                  chatMode={chatMode}
-                  setChatMode={setChatMode}
-                  target={target}
-                  setTarget={setTarget}
-                  onClose={() => setShowSongPanel(false)}
-                  inline
-                />
+                <SongRoom room={room} name={name} socket={socket} />
               )}
-              <Listener socket={socket} room={room} />
+              {/* 👂 聽眾面板 */}
+              <Listener room={room} name={name} socket={socket} />
             </div>
 
 
