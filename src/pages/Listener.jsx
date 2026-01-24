@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Room } from "livekit-client";
 
 export default function Listener({ room, name, socket }) {
@@ -6,90 +6,143 @@ export default function Listener({ room, name, socket }) {
   const [listening, setListening] = useState(false);
   const [currentSinger, setCurrentSinger] = useState(null);
 
+  // 記住目前正在播放的 audio elements（避免疊音）
+  const audioElementsRef = useRef({});
+
+  /* ===== 監聽目前演唱者（Socket） ===== */
   useEffect(() => {
     if (!socket) return;
 
-    console.log("[Listener] socket ready, subscribing to micStateUpdate");
-
     const handler = (data) => {
-      console.log("[Listener] micStateUpdate received:", data);
-      setCurrentSinger(data.currentSinger);
+      console.log("[Listener] micStateUpdate:", data);
+      setCurrentSinger(data.currentSinger || null);
     };
 
     socket.on("micStateUpdate", handler);
-
-    return () => {
-      console.log("[Listener] unsubscribing from micStateUpdate");
-      socket.off("micStateUpdate", handler);
-    };
+    return () => socket.off("micStateUpdate", handler);
   }, [socket]);
 
-  const toggleListening = async () => {
-    if (!name) {
-      console.warn("[Listener] name is undefined, cannot get token");
-      return;
+  /* ===== 停止收聽（清乾淨） ===== */
+  const stopListening = () => {
+    console.log("[Listener] stopping listening");
+
+    if (lkRoom) {
+      lkRoom.disconnect();
+      lkRoom.removeAllListeners();
     }
 
+    Object.values(audioElementsRef.current).forEach((el) => {
+      el.pause?.();
+      el.remove();
+    });
+
+    audioElementsRef.current = {};
+    setLkRoom(null);
+    setListening(false);
+  };
+
+  /* ===== 開始 / 停止收聽 ===== */
+  const toggleListening = async () => {
+    if (!name) return;
+
     if (listening) {
-      console.log("[Listener] stopping listening");
-      if (lkRoom) {
-        lkRoom.disconnect();
-        lkRoom.removeAllListeners();
-      }
-      setListening(false);
-      setLkRoom(null);
+      stopListening();
       return;
     }
 
     try {
-      console.log(`[Listener] requesting LiveKit token for ${name} in room ${room}`);
+      console.log(`[Listener] requesting token for ${name} @ ${room}`);
+
       const res = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/livekit-token?room=${room}&name=${name}`
       );
       const data = await res.json();
-      console.log("[Listener] token response:", data);
-
-      if (!data.token) {
-        console.error("[Listener] token missing in response");
-        return;
-      }
+      if (!data.token) return;
 
       const lk = new Room();
 
-      lk.on("connected", () => console.log("[Listener] LiveKit room connected"));
-      lk.on("disconnected", () => console.log("[Listener] LiveKit room disconnected"));
+      lk.on("connected", () =>
+        console.log("[Listener] LiveKit connected")
+      );
 
+      lk.on("disconnected", () =>
+        console.log("[Listener] LiveKit disconnected")
+      );
+
+      /* ===== 收到音訊 Track ===== */
       lk.on("trackSubscribed", (track, publication, participant) => {
-        console.log("[Listener] trackSubscribed:", track.kind, participant.identity);
+        console.log(
+          "[Listener] trackSubscribed:",
+          track.kind,
+          participant.identity
+        );
 
-        if (track.kind === "audio") {
-          // 建立 audio element 播放音訊
-          const audioEl = track.play();
-          audioEl.autoplay = true;
-          audioEl.volume = 1;
-          audioEl.muted = false;
+        if (track.kind !== "audio") return;
 
-          // 附加到 DOM，方便 debug
-          audioEl.id = `audio-${participant.identity}`;
-          if (!document.getElementById(audioEl.id)) {
-            document.body.appendChild(audioEl);
-          }
-
-          console.log("[Listener] audio track playing for", participant.identity);
+        // 👉 如果你「只想聽目前唱歌的人」，打開這段
+        if (currentSinger && participant.identity !== currentSinger) {
+          console.log("[Listener] ignore non-singer:", participant.identity);
+          return;
         }
+
+        // 移除舊的（避免疊音）
+        if (audioElementsRef.current[participant.identity]) {
+          audioElementsRef.current[participant.identity].remove();
+          delete audioElementsRef.current[participant.identity];
+        }
+
+        // ✅ 正確方式：attach()
+        const audioEl = track.attach();
+
+        audioEl.autoplay = true;
+        audioEl.muted = false;
+        audioEl.volume = 1;
+
+        audioEl.id = `audio-${participant.identity}`;
+        document.body.appendChild(audioEl);
+
+        // 行動裝置保險
+        audioEl.play?.().catch(() => {});
+
+        audioElementsRef.current[participant.identity] = audioEl;
+
+        console.log(
+          "[Listener] audio playing:",
+          participant.identity
+        );
       });
 
+      /* ===== Track 被移除 ===== */
       lk.on("trackUnsubscribed", (track, publication, participant) => {
-        console.log("[Listener] trackUnsubscribed:", track.kind, participant.identity);
+        console.log(
+          "[Listener] trackUnsubscribed:",
+          track.kind,
+          participant.identity
+        );
+
+        if (track.kind !== "audio") return;
+
+        const el = audioElementsRef.current[participant.identity];
+        if (el) {
+          el.pause?.();
+          el.remove();
+          delete audioElementsRef.current[participant.identity];
+        }
+
+        track.detach().forEach((e) => e.remove());
       });
 
-      await lk.connect(import.meta.env.VITE_LIVEKIT_URL, data.token, { autoSubscribe: true });
+      await lk.connect(import.meta.env.VITE_LIVEKIT_URL, data.token, {
+        autoSubscribe: true,
+      });
 
       setLkRoom(lk);
       setListening(true);
+
       console.log("[Listener] listening started");
     } catch (err) {
       console.error("[Listener] failed to listen:", err);
+      stopListening();
     }
   };
 
