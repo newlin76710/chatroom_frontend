@@ -266,7 +266,7 @@ export default function ChatApp() {
   const loginGuest = async () => {
     try {
       sessionStorage.clear();
-      const guestName = `訪客${Date.now()}${Math.floor(Math.random() * 9999)}`;
+      const guestName = `訪客${Math.floor(Math.random() * 9999)}`;
 
       const res = await fetch(`${BACKEND}/auth/guest`, { method: "POST" });
       const data = await res.json();

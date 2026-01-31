@@ -46,6 +46,7 @@ export default function UserList({
               myLevel >= AML &&          // 自己 91 等以上
               u.level < myLevel &&      // 只能踢比自己低等
               u.name !== myName &&      // 不能踢自己
+              u.type !== "AI" &&
               kickUser;
 
             const isFiltered = filteredUsers.includes(u.name);
@@ -68,7 +69,7 @@ export default function UserList({
                   />
                 )}
 
-                {u.name} [Lv.{formatLv(u.type === "guest" ? 1 : u.level)}] ({u.gender})
+                {u.name} [Lv.{formatLv(u.type === "guest" ? 1 : u.level)}] ({u.gender}) {u.type === "AI" && "(AI)"}
 
                 {canKick && (
                   <button
