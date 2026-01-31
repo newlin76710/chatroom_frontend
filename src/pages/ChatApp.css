@@ -9,6 +9,26 @@ body {
   box-sizing: border-box;
 }
 
+.chat-title-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: 6px;
+}
+
+.announce-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: #3399ff;        /* 藍色文字 */
+  transition: color 0.2s;
+}
+
+.announce-btn:hover {
+  color: #66b2ff;        /* 滑鼠懸停更亮藍色 */
+}
+
 /* ===== 聊天整個 layout ===== */
 .chat-layout {
   width: 100%;
@@ -30,8 +50,7 @@ body {
 
 /* 右側聊天室區域（YouTube + userlist, 固定寬 250px） */
 .chat-right {
-  flex: 25;
-  width: 250px;
+  flex: 0 0 330px; /* 固定寬度 */
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -130,12 +149,30 @@ body {
   margin-right: 6px;
   object-fit: cover;
 }
-
-/* 聊天輸入 */
 .chat-input {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 4px; /* 比較小 */
+  align-items: center;
+}
+
+.chat-input input[type="text"] {
+  flex: 1 1 auto;  /* 只讓文字輸入框拉伸 */
+  min-width: 80px; /* 避免太小 */
+  padding: 4px 6px;
+  background: #1a1a1a;
+  border: 1px solid #555;
+  color: #fff;
+  border-radius: 4px;
+}
+
+.chat-input input[type="color"] {
+  flex: 0 0 auto;  /* 不拉伸 */
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid #ccc;
+  border-radius: 4px;
 }
 
 .chat-input input,

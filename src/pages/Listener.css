@@ -1,0 +1,24 @@
+.listener-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  border-radius: 8px;
+}
+
+.current-singer {
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.listen-btn {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+}

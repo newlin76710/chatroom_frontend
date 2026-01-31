@@ -1,103 +1,143 @@
-// SongPanel.jsx
-import { useState, useEffect, useRef } from "react";
-import { connect, Room, LocalAudioTrack } from "livekit-client";
+import { useRef, useState, useEffect } from "react";
 
-const BACKEND = import.meta.env.VITE_BACKEND_URL;
-const LIVEKIT_URL = import.meta.env.VITE_LIVEKIT_URL;
+export default function SongPanel({ socket, room, name }) {
+  const pcRef = useRef(null);
+  const streamRef = useRef(null);
+  const pendingCandidates = useRef([]);
 
-export default function SongPanel({ room, name }) {
-  const [queue, setQueue] = useState([]);
-  const [currentSinger, setCurrentSinger] = useState(null);
-  const [status, setStatus] = useState("idle"); // idle | waiting | singing | listening
-  const lkRoomRef = useRef(null);
-  const audioTrackRef = useRef(null);
+  const [singing, setSinging] = useState(false);
+  const [micState, setMicState] = useState({ queue: [], currentSinger: null });
+
+  const isMyTurn = micState.currentSinger === name;
+  const isIdle = !micState.currentSinger;
 
   /* ========================
-     加入隊列
+     🎤 開始唱（輪到才可唱）
   ======================== */
-  const joinQueue = async () => {
-    setStatus("waiting");
-    const res = await fetch(`${BACKEND}/song/joinQueue?room=${room}&singer=${name}`);
-    const data = await res.json();
-    setQueue(data.queue);
-    setCurrentSinger(data.currentSinger);
+  async function startSing() {
+    if (singing || !isMyTurn) return;
 
-    if (data.currentSinger === name) {
-      startSing();
-    }
-  };
+    console.log("🎤 startSing");
+
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    streamRef.current = stream;
+
+    const pc = new RTCPeerConnection({
+      iceServers: [
+        { urls: "stun:stun.relay.metered.ca:80" },
+        {
+          urls: [
+            "turn:turn.ek21.com:3478?transport=udp",
+            "turn:turn.ek21.com:3478?transport=tcp",
+          ],
+          username: "webrtcuser",
+          credential: "Abc76710",
+        },
+      ],
+    });
+    pcRef.current = pc;
+
+    stream.getTracks().forEach(track => pc.addTrack(track, stream));
+
+    pc.onicecandidate = e => {
+      if (e.candidate) socket.emit("webrtc-ice", { room, candidate: e.candidate });
+    };
+
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+
+    socket.emit("webrtc-offer", { room, offer, singer: name });
+
+    setSinging(true);
+  }
 
   /* ========================
-     開始唱
+     🛑 放下 Mic
   ======================== */
-  const startSing = async () => {
-    setStatus("singing");
-    try {
-      // 1️⃣ 取得 LiveKit token
-      const tokenRes = await fetch(`${BACKEND}/livekit-token?room=${room}&name=${name}`);
-      const { token } = await tokenRes.json();
+  function stopSing() {
+    console.log("🛑 stopSing");
 
-      // 2️⃣ 連線 LiveKit
-      const lkRoom = await connect(LIVEKIT_URL, token);
-      lkRoomRef.current = lkRoom;
+    streamRef.current?.getTracks().forEach(t => t.stop());
+    pcRef.current?.close();
 
-      // 3️⃣ 建立本地音訊 track
-      const localTrack = await LocalAudioTrack.create();
-      audioTrackRef.current = localTrack;
+    streamRef.current = null;
+    pcRef.current = null;
+    pendingCandidates.current = [];
 
-      // 4️⃣ 發布 track
-      await lkRoom.localParticipant.publishTrack(localTrack);
+    setSinging(false);
 
-      // 5️⃣ 監聽房間事件，更新當前歌手
-      lkRoom.on("participantConnected", (p) => console.log("Participant joined:", p.identity));
-      lkRoom.on("participantDisconnected", (p) => console.log("Participant left:", p.identity));
-      lkRoom.on("trackSubscribed", (track, participant) => {
-        console.log("Subscribed to track:", participant.identity);
-      });
-
-      console.log("[SongPanel] 開始唱歌成功");
-    } catch (err) {
-      console.error("[SongPanel] startSing failed", err);
-      setStatus("idle");
-      alert("連線失敗，請檢查 token 或網路");
-    }
-  };
+    socket.emit("leaveQueue", { room, singer: name });
+    socket.emit("webrtc-stop", { room });
+  }
 
   /* ========================
-     停止唱
+     📡 Socket Events
   ======================== */
-  const stopSing = async () => {
-    if (audioTrackRef.current) {
-      audioTrackRef.current.stop();
-      audioTrackRef.current = null;
-    }
-    if (lkRoomRef.current) {
-      lkRoomRef.current.disconnect();
-      lkRoomRef.current = null;
-    }
+  useEffect(() => {
+    const onAnswer = async ({ answer }) => {
+      if (!pcRef.current) return;
+      await pcRef.current.setRemoteDescription(answer);
+      for (const c of pendingCandidates.current) await pcRef.current.addIceCandidate(c);
+      pendingCandidates.current = [];
+    };
 
-    setStatus("idle");
+    const onIce = async ({ candidate }) => {
+      if (!pcRef.current || !candidate) return;
+      if (!pcRef.current.remoteDescription) pendingCandidates.current.push(candidate);
+      else await pcRef.current.addIceCandidate(candidate).catch(e => console.warn(e));
+    };
 
-    // 通知後端離開 queue
-    await fetch(`${BACKEND}/song/leaveQueue?room=${room}&singer=${name}`);
-  };
+    const onMicStateUpdate = ({ queue, currentSinger }) => {
+      console.log("[micStateUpdate]", queue, currentSinger);
+      setMicState({ queue, currentSinger });
+    };
+
+    const onRoomPhase = ({ phase, singer }) => {
+      if (phase === "singing" && singer === name && !singing) startSing();
+    };
+
+    socket.on("webrtc-answer", onAnswer);
+    socket.on("webrtc-ice", onIce);
+    socket.on("micStateUpdate", onMicStateUpdate);
+    socket.on("update-room-phase", onRoomPhase);
+    socket.on("webrtc-stop", () => {
+      if (singing) stopSing();
+    });
+
+    return () => {
+      socket.off("webrtc-answer", onAnswer);
+      socket.off("webrtc-ice", onIce);
+      socket.off("micStateUpdate", onMicStateUpdate);
+      socket.off("update-room-phase", onRoomPhase);
+      socket.off("webrtc-stop");
+    };
+  }, [socket, singing]);
 
   /* ========================
-     UI
+     🎛 UI
   ======================== */
   return (
     <div style={{ padding: 12 }}>
-      <p>🎤 目前演唱者：{currentSinger || "無人唱歌"}</p>
-      <p>📝 排隊名單：{queue.map(u => u.name).join(", ")}</p>
-
-      {status === "idle" && (
-        <button onClick={joinQueue}>🎤 開始唱（搶 Mic）</button>
+      {/* 沒人在唱，自己沒在隊列中 */}
+      {!micState.currentSinger && !micState.queue.includes(name) && (
+        <button onClick={() => socket.emit("joinQueue", { room, singer: name })}>
+          🎤 排隊拿 Mic
+        </button>
       )}
 
-      {status === "waiting" && <p>⏳ 等待輪到你唱...</p>}
+      {/* 正在輪到你唱（後端已設你為 currentSinger） */}
+      {micState.currentSinger === name && !singing && (
+        <button onClick={startSing}>🎤 輪到你，開始唱</button>
+      )}
 
-      {status === "singing" && (
-        <button onClick={stopSing}>🛑 停止唱</button>
+      {/* 正在唱 */}
+      {micState.currentSinger === name && singing && (
+        <button onClick={stopSing}>🛑 放下 Mic</button>
+      )}
+
+      {/* 顯示其他人正在唱 */}
+      {micState.currentSinger && micState.currentSinger !== name && (
+        <p>🎶 {micState.currentSinger} 正在唱</p>
       )}
     </div>
   );

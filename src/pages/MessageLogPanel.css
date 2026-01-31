@@ -1,0 +1,122 @@
+/* MessageLogPanel.css */
+
+/* 覆蓋共用 admin modal 樣式 */
+.admin-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.4);
+  z-index: 9999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.admin-modal {
+  background-color: #e3f2fd; /* 淺藍背景 */
+  padding: 12px;
+  border-radius: 8px;
+  width: 700px;
+  max-width: 90%;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  color: #0d47a1; /* 文字深藍 */
+}
+
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.admin-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: #0d47a1;
+}
+
+.admin-btn {
+  background-color: #1976d2;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background-color 0.2s;
+}
+
+.admin-btn:hover:not(:disabled) {
+  background-color: #1565c0;
+}
+
+.admin-btn:disabled {
+  background-color: #90caf9;
+  cursor: not-allowed;
+}
+
+/* 搜尋區 */
+.admin-search {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.admin-search input,
+.admin-search select {
+  padding: 2px 6px;
+  font-size: 0.85rem;
+  border-radius: 4px;
+  border: 1px solid #64b5f6;
+  background-color: #bbdefb;
+  color: #0d47a1;
+  width: auto;
+  flex: none;
+}
+
+.admin-search input[type="text"] {
+  min-width: 120px;
+}
+
+.admin-search select {
+  min-width: 120px;
+}
+
+.admin-search input.keyword {
+  min-width: 180px;
+}
+
+.admin-table-wrapper {
+  overflow-x: auto;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.admin-table th,
+.admin-table td {
+  padding: 6px 8px;
+  text-align: left;
+  border: 1px solid #90caf9;
+  font-size: 0.85rem;
+  vertical-align: top;
+}
+
+.admin-table th {
+  background-color: #64b5f6;
+  color: #fff;
+}
+
+.admin-pagination {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+}

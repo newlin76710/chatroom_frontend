@@ -4,14 +4,22 @@ import { useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
 import MessageList from "./MessageList";
 import VideoPlayer from "./VideoPlayer";
+import VideoSafeBoundary from "./VideoSafeBoundary";
 import SongRoom from "./SongRoom";
 import Listener from "./Listener";
 import UserList from "./UserList";
+import AdminToolPanel from "./AdminToolPanel";
+import QuickPhrasePanel from "./QuickPhrasePanel";
+import AnnouncementPanel from "./AnnouncementPanel";
 import { aiAvatars } from "./aiConfig";
 import "./ChatApp.css";
 
 
 const BACKEND = import.meta.env.VITE_BACKEND_URL || "http://localhost:10000";
+const RN = import.meta.env.VITE_ROOM_NAME || "windsong";
+const CN = import.meta.env.VITE_CHATROOM_NAME || "聽風的歌";
+const AML = import.meta.env.VITE_ADMIN_MAX_LEVEL || 99;
+const ANL = import.meta.env.VITE_ADMIN_MIN_LEVEL || 91;
 
 const safeText = (v) => {
   if (v === null || v === undefined) return "";
@@ -38,7 +46,7 @@ if (!globalSocket) {
 
 export default function ChatApp() {
   const navigate = useNavigate();
-  const [room] = useState("public");
+  const [room] = useState(RN);
   const [name, setName] = useState("");
   const [level, setLevel] = useState(1);
   const [exp, setExp] = useState(0);
@@ -60,6 +68,15 @@ export default function ChatApp() {
   const socket = globalSocket;
   const [expTips, setExpTips] = useState([]);
   const [levelUpTips, setLevelUpTips] = useState([]);
+  const [chatColor, setChatColor] = useState(
+    sessionStorage.getItem("chatColor") || "#ffffff"
+  );
+  const [showAnnouncement, setShowAnnouncement] = useState(false);
+  const [filteredUsers, setFilteredUsers] = useState([]); // 過濾用戶名
+  const inputRef = useRef(null);
+  const userType = sessionStorage.getItem("type") || "guest";
+  const isMember = userType === "account";
+  const [currentSinger, setCurrentSinger] = useState(null);
 
   // --- 初始化 sessionStorage ---
   useEffect(() => {
@@ -74,11 +91,27 @@ export default function ChatApp() {
     setGender(storedGender);
   }, []);
 
+  const [token, setToken] = useState("");
+  // 初始化 token
+  useEffect(() => {
+    const storedToken = sessionStorage.getItem("token") || sessionStorage.getItem("guestToken") || null;
+    if (storedToken) setToken(storedToken);
+  }, []);
+
+  useEffect(() => {
+    // 心跳 10 秒一次
+    const heartbeatInterval = setInterval(() => {
+      socket.emit("heartbeat");
+    }, 10000);
+
+    return () => clearInterval(heartbeatInterval);
+  }, [socket]);
+
   // --- updateUsers 處理 ---
   useEffect(() => {
     const handleUpdateUsers = (list = []) => {
       if (!Array.isArray(list)) return;
-      console.log("updateUsers list:", list);
+
       setUserList(
         list
           .map((u, i) => ({
@@ -103,6 +136,18 @@ export default function ChatApp() {
           (u.type || "guest") === (sessionStorage.getItem("type") || "guest")
       );
       if (!me) return;
+      const myType = sessionStorage.getItem("type") || "guest";
+
+      // 🔒 訪客等級固定 1
+      if (myType === "guest") {
+        if (level !== 1) {
+          setLevel(1);
+          setExp(0);
+          sessionStorage.setItem("level", 1);
+          sessionStorage.setItem("exp", 0);
+        }
+        return; // ❗訪客直接不吃後面的升級邏輯
+      }
 
       // 等級變化
       if (me.level !== level) {
@@ -158,13 +203,8 @@ export default function ChatApp() {
     const handleMessage = (m) => {
       if (!m) return;
 
-      // 🔑 從 userList 補完整 user（avatar / gender / level）
-      const fullUser = userList.find(
-        (u) => u.name === m.user?.name
-      );
-
-      console.log("RAW MESSAGE =", m);
-      console.log("FULL USER FROM LIST =", fullUser);
+      // 補完整 user
+      const fullUser = userList.find((u) => u.name === m.user?.name) || {};
 
       setMessages((s) => [
         ...s,
@@ -173,7 +213,7 @@ export default function ChatApp() {
           message: safeText(m.message),
           user: {
             ...m.user,
-            ...fullUser,                 // ✅ avatar 在這裡回來
+            ...fullUser,
             name: safeText(m.user?.name),
           },
           target: safeText(m.target),
@@ -226,7 +266,7 @@ export default function ChatApp() {
   const loginGuest = async () => {
     try {
       sessionStorage.clear();
-      const guestName = `訪客${Date.now()}${Math.floor(Math.random() * 999)}`;
+      const guestName = `訪客${Date.now()}${Math.floor(Math.random() * 9999)}`;
 
       const res = await fetch(`${BACKEND}/auth/guest`, { method: "POST" });
       const data = await res.json();
@@ -256,10 +296,18 @@ export default function ChatApp() {
   };
 
   // --- 離開房間 / 斷線 ---
-  const leaveRoom = () => {
+  const leaveRoom = async () => {
     try {
       socket.emit("stop-listening", { room, listenerId: name });
       socket.emit("leaveRoom", { room, user: { name } });
+
+      // 不論 guest 或 account 都登出
+      await fetch(`${BACKEND}/auth/logout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: name })
+      });
+
       sessionStorage.clear();
       socket.disconnect();
       window.location.href = "/login";
@@ -271,16 +319,35 @@ export default function ChatApp() {
 
   // --- 自動處理刷新 / 關閉瀏覽器 ---
   useEffect(() => {
-    const handleBeforeUnload = () => {
+    const handleBeforeUnload = async () => {
       try {
         socket.emit("stop-listening", { room, listenerId: name });
         socket.emit("leaveRoom", { room, user: { name } });
+
+        // 不論 guest 或 account 都登出
+        await fetch(`${BACKEND}/auth/logout`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: name })
+        });
+
         socket.disconnect();
-      } catch { }
+      } catch (err) {
+        console.error("自動登出失敗", err);
+      }
     };
+
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [socket, room, name]);
+
+
+  useEffect(() => {
+    if (!cooldown) {
+      // 等瀏覽器完成 re-render 再 focus（保險）
+      focusInput?.();
+    }
+  }, [cooldown]);
 
   // --- 發訊息 ---
   const send = () => {
@@ -290,6 +357,7 @@ export default function ChatApp() {
     socket.emit("message", {
       room,
       message: text,
+      color: chatColor,     // ⭐ 關鍵
       user: { name },
       target: target || "",
       mode: chatMode,
@@ -298,19 +366,20 @@ export default function ChatApp() {
 
     setText("");
     setCooldown(true);
-    setPlaceholder("請等待 3 秒後再發送…");
+    setPlaceholder("請等待 1 秒後再發送…");
     setTimeout(() => {
       setCooldown(false);
       setPlaceholder("輸入訊息...");
-    }, 3000);
+    }, 1000);
   };
 
   const extractVideoID = (url) => {
     if (!url) return null;
     const match =
-      url.match(/v=([\w-]{11})/) ||
-      url.match(/youtu\.be\/([\w-]{11})/) ||
-      url.match(/shorts\/([\w-]{11})/);
+      url.match(/[?&]v=([\w-]{11})/) ||        // 一般 watch / live watch
+      url.match(/youtu\.be\/([\w-]{11})/) ||   // youtu.be
+      url.match(/shorts\/([\w-]{11})/) ||      // shorts
+      url.match(/live\/([\w-]{11})/);          // live
     return match ? match[1] : null;
   };
 
@@ -359,18 +428,46 @@ export default function ChatApp() {
     };
   }, [socket, navigate]);
 
+  const clearAllMessages = () => {
+    setMessages([]);
+  };
+  const focusInput = () => {
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+    });
+  };
+
   return (
     <div className="chat-layout">
       {/* 左側聊天區 */}
       <div className="chat-left">
-        <div className="chat-title">尋夢園男歡女愛聊天室</div>
+        <div className="chat-title-bar">
+          <div className="chat-title">
+            尋夢園{CN}聊天室
+            <button
+              className="announce-btn"
+              title="聊天室公告"
+              onClick={() => setShowAnnouncement(true)}
+            >
+              📢公告
+            </button>
+          </div>
+
+        </div>
+        <AnnouncementPanel
+          open={showAnnouncement}
+          onClose={() => setShowAnnouncement(false)}
+          myLevel={level}
+          token={token}
+        />
         {!joined ? (
           <button onClick={loginGuest}>訪客登入</button>
         ) : (
           <>
             <div className="chat-toolbar">
               <span>
-                Hi [Lv.{formatLv(level)}] {name} ({gender}) EXP:{exp}
+                Hi [Lv.{formatLv(level)}] {name} ({gender})
+                {sessionStorage.getItem("type") !== "guest" && level < ANL - 1 ? ` EXP:${exp}` : ""}
                 <span className="exp-tip-inline">
                   {expTips.map((tip) => <span key={tip.id} className="exp-tip">{tip.value}</span>)}
                 </span>
@@ -378,44 +475,127 @@ export default function ChatApp() {
                   {levelUpTips.map((tip) => <span key={tip.id} className="levelup-tip">{tip.value}</span>)}
                 </span>
               </span>
-
               <button onClick={leaveRoom}>離開</button>
-
               <div className="video-request">
-                <input
-                  value={videoUrl}
-                  onChange={(e) => setVideoUrl(e.target.value)}
-                  placeholder="YouTube 連結"
-                />
+                <input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="YouTube 連結" />
                 <button onClick={playVideo}>🎵 點播</button>
               </div>
-
-              <button onClick={() => setShowSongPanel(!showSongPanel)}>🎤 唱歌</button>
-
-              {/* 🎤 歌手 / 麥克風面板 */}
-              {showSongPanel && (
-                <SongRoom room={room} name={name} socket={socket} />
+              {isMember ? (
+                <>
+                  <button
+                    onClick={() => setShowSongPanel(!showSongPanel)}
+                    disabled={currentSinger && currentSinger !== name}
+                    title={currentSinger && currentSinger !== name ? "請等歌手下 Mic" : ""}
+                    style={{
+                      opacity: currentSinger && currentSinger !== name ? 0.5 : 1,
+                      cursor: currentSinger && currentSinger !== name ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    🎤 唱歌
+                  </button>
+                  {showSongPanel && (
+                    <SongRoom room={room} name={name} socket={socket} currentSinger={currentSinger}/>
+                  )}
+                </>
+              ) : (
+                <button
+                  disabled
+                  title="登入會員即可使用唱歌功能"
+                  style={{ opacity: 0.5, cursor: "not-allowed" }}
+                >
+                  🎤 唱歌（限會員）
+                </button>
               )}
-              {/* 👂 聽眾面板 */}
-              <Listener room={room} name={name} socket={socket} />
+              <Listener room={room} name={name} socket={socket} onSingerChange={(singer) => setCurrentSinger(singer)} />
             </div>
 
-
-            <MessageList messages={messages} name={name} typing={typing} messagesEndRef={messagesEndRef} />
+            <MessageList
+              messages={messages.filter(msg => !filteredUsers.includes(msg.user?.name))}
+              name={name}
+              level={level}
+              typing={typing}
+              messagesEndRef={messagesEndRef}
+              onSelectTarget={(targetName) => {
+                if (!targetName) return;
+                setTarget(targetName);
+                // 自動切換到私聊模式，如果之前是 public
+                if (chatMode === "public") setChatMode("private");
+                focusInput();
+              }}
+              userList={userList}
+            />
 
             <div className="chat-input">
+              <button
+                onClick={clearAllMessages}
+                style={{
+                  fontSize: "0.7rem",
+                  padding: "4px 6px",
+                  marginRight: "6px",
+                  borderRadius: "6px",
+                  border: "1px solid #444",
+                  background: "#1a1a1a",
+                  color: "#aaa",
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                🧹清空畫面
+              </button>
+              {/* 🛡 管理按鈕（小） */}
+              <AdminToolPanel
+                myName={name}
+                myLevel={level}
+                minLevel={AML}
+                token={token}
+              />
               <label><input type="radio" checked={chatMode === "public"} onChange={() => { setChatMode("public"); setTarget(""); }} /> 公開</label>
               <label><input type="radio" checked={chatMode === "publicTarget"} onChange={() => setChatMode("publicTarget")} /> 公開對象</label>
               <label><input type="radio" checked={chatMode === "private"} onChange={() => setChatMode("private")} /> 私聊</label>
               {chatMode !== "public" && (
-                <select value={target} onChange={(e) => setTarget(e.target.value)}>
+                <select
+                  value={target}
+                  onChange={(e) => {
+                    setTarget(e.target.value);
+                    focusInput?.();
+                  }}
+                >
                   <option value="">選擇對象</option>
-                  {userList.filter((u) => u.name !== name).map((u) => (
-                    <option key={u.id} value={u.name}>{u.name}</option>
-                  ))}
+                  {userList
+                    .filter(u => u.name !== name)
+                    .map((u) => (
+                      <option key={u.id} value={u.name}>
+                        {u.name}
+                      </option>
+                    ))}
                 </select>
               )}
-              <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder={placeholder} disabled={cooldown} />
+
+              <input
+                type="color"
+                value={chatColor}
+                title="選擇聊天顏色"
+                onChange={(e) => {
+                  setChatColor(e.target.value);
+                  sessionStorage.setItem("chatColor", e.target.value);
+                }}
+                style={{
+                  width: "24px",     // 調小寬度
+                  height: "24px",    // 調小高度
+                  padding: "0",      // 移除內邊距
+                  marginLeft: "6px", // 和文字間距
+                  border: "1px solid #ccc", // 可選邊框
+                  borderRadius: "4px",      // 圓角
+                  verticalAlign: "middle"   // 對齊輸入框
+                }}
+              />
+              <QuickPhrasePanel
+                token={token}
+                onSelect={(content) => {
+                  setText((prev) => (prev ? prev + " " : "") + content);
+                }}
+              />
+              <input ref={inputRef} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder={placeholder} disabled={cooldown} />
               <button onClick={send} disabled={cooldown}>發送</button>
             </div>
 
@@ -426,7 +606,13 @@ export default function ChatApp() {
       {/* 右側使用者列表 & 影片 */}
       <div className="chat-right">
         <div className="youtube-container">
-          <VideoPlayer video={currentVideo} extractVideoID={extractVideoID} onClose={() => setCurrentVideo(null)} />
+          <VideoSafeBoundary>
+            <VideoPlayer
+              video={currentVideo}
+              extractVideoID={extractVideoID}
+              onClose={() => setCurrentVideo(null)}
+            />
+          </VideoSafeBoundary>
         </div>
         <UserList
           userList={userList}
@@ -438,8 +624,12 @@ export default function ChatApp() {
           kickUser={(targetName) => socket.emit("kickUser", { room, targetName })}
           myLevel={level}
           myName={name}
+          filteredUsers={filteredUsers}
+          setFilteredUsers={setFilteredUsers}
+          focusInput={focusInput}
         />
       </div>
+
     </div>
   );
 }

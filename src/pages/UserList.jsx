@@ -9,12 +9,25 @@ export default function UserList({
   setChatMode,
   userListCollapsed,
   setUserListCollapsed,
-  kickUser, // 新增 kickUser prop
-  myLevel, // 新增自己等級
-  myName   // 新增自己名字
+  kickUser,
+  myLevel,
+  myName,
+  filteredUsers,       // 新增：被過濾的用戶名列表
+  setFilteredUsers,    // 新增：更新過濾用戶
+  focusInput       
 }) {
   const formatLv = (lv) => String(lv).padStart(2, "0");
-  //console.log("userList:", userList);
+  const AML = import.meta.env.VITE_ADMIN_MIN_LEVEL || 91;
+
+  // 切換過濾 / 解除過濾
+  const toggleFilter = (userName) => {
+    if (filteredUsers.includes(userName)) {
+      setFilteredUsers(filteredUsers.filter(u => u !== userName));
+    } else {
+      setFilteredUsers([...filteredUsers, userName]);
+    }
+  };
+
   return (
     <div className={`user-list ${userListCollapsed ? "collapsed" : ""}`}>
       <div
@@ -25,39 +38,64 @@ export default function UserList({
       </div>
 
       {!userListCollapsed &&
-        userList.map((u, idx) => {
-          const avatarUrl = u.avatar || aiAvatars[u.name];
-          //console.log(userList)
-          return (
-            <div
-              key={`${u.name}-${idx}`} // 修正 key 問題
-              className={`user-item ${u.name === target ? "selected" : ""}`}
-              onClick={() => {
-                setChatMode("private");
-                setTarget(u.name);
-              }}
-            >
-              {avatarUrl && (
-                <img src={avatarUrl} alt={u.name} className="user-avatar" />
-              )}
-              {u.name} [Lv.{formatLv(u.level)}] ({u.gender})
+        userList
+          .map((u, idx) => {
+            const avatarUrl = u.avatar || aiAvatars[u.name];
 
-              {/* 如果自己是 99 等，才顯示踢人按鈕 */}
-              {myLevel === 99 && u.name !== myName && u.type !== "AI" && kickUser && (
+            const canKick =
+              myLevel >= AML &&          // 自己 91 等以上
+              u.level < myLevel &&      // 只能踢比自己低等
+              u.name !== myName &&      // 不能踢自己
+              kickUser;
+
+            const isFiltered = filteredUsers.includes(u.name);
+
+            return (
+              <div
+                key={`${u.name}-${idx}`}
+                className={`user-item ${u.name === target ? "selected" : ""}`}
+                onClick={() => {
+                  setChatMode("private");
+                  setTarget(u.name);
+                  focusInput?.();
+                }}
+              >
+                {avatarUrl && (
+                  <img
+                    src={avatarUrl}
+                    alt={u.name}
+                    className="user-avatar"
+                  />
+                )}
+
+                {u.name} [Lv.{formatLv(u.type === "guest" ? 1 : u.level)}] ({u.gender})
+
+                {canKick && (
+                  <button
+                    className="kick-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      kickUser(u.name);
+                    }}
+                  >
+                    踢出
+                  </button>
+                )}
+
+                {/* 過濾按鈕 */}
                 <button
-                  className="kick-btn"
+                  className="filter-btn"
+                  style={{ marginLeft: "4px", fontSize: "0.7rem" }}
                   onClick={(e) => {
-                    e.stopPropagation(); // 防止觸發選擇私聊
-                    console.log("kickUser clicked:", u.name);
-                    kickUser(u.name);
+                    e.stopPropagation();
+                    toggleFilter(u.name);
                   }}
                 >
-                  踢出
+                  {isFiltered ? "解除" : "過濾"}
                 </button>
-              )}
-            </div>
-          );
-        })}
+              </div>
+            );
+          })}
     </div>
   );
 }
