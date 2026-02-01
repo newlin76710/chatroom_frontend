@@ -27,13 +27,10 @@ export default function UserList({
       setFilteredUsers([...filteredUsers, userName]);
     }
   };
-  const getUserColor = (userName) => {
-    if (!userName) return "#00aa00";
-    const user = userList.find((u) => u.name === userName);
-    if (!user) return "#00aa00";
-    if (user.gender === "男") return "#A7C7E7";
-    if (user.gender === "女") return "#F8C8DC";
-    return "#00aa00";
+  const getUserColorByGender = (gender) => {
+    if (gender === "男") return "#A7C7E7"; // 天空藍
+    if (gender === "女") return "#F8C8DC"; // 淺粉紅
+    return "#00aa00"; // 未定
   };
   return (
     <div className={`user-list ${userListCollapsed ? "collapsed" : ""}`}>
@@ -78,7 +75,7 @@ export default function UserList({
 
                 <span
                   className="user-name"
-                  style={{ color: getUserColor(u.name) }}
+                  style={{ color: getUserColorByGender(u.gender) }}
                 >
                   {u.name}
                 </span>
