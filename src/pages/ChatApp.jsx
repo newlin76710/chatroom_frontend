@@ -436,6 +436,11 @@ export default function ChatApp() {
       inputRef.current?.focus();
     });
   };
+  const getUserColorByGender = (gender) => {
+    if (gender === "男") return "#A7C7E7"; // 天空藍
+    if (gender === "女") return "#F8C8DC"; // 淺粉紅
+    return "#00aa00"; // 未定
+  };
 
   return (
     <div className="chat-layout">
@@ -466,8 +471,15 @@ export default function ChatApp() {
           <>
             <div className="chat-toolbar">
               <span>
-                Hi [Lv.{formatLv(level)}] {name} ({gender})
-                {sessionStorage.getItem("type") !== "guest" && level < ANL - 1 ? ` EXP:${exp}` : ""}
+                Hi [Lv.{formatLv(level)}]
+                <span
+                  className="chat-username"
+                  style={{ color: getUserColorByGender(gender) }}
+                >
+                  {name}
+                </span>
+                &nbsp;({gender})
+                {sessionStorage.getItem("type") !== "guest" && level < ANL - 1 ? ` 積分:${exp}` : ""}
                 <span className="exp-tip-inline">
                   {expTips.map((tip) => <span key={tip.id} className="exp-tip">{tip.value}</span>)}
                 </span>

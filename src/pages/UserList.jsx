@@ -27,7 +27,14 @@ export default function UserList({
       setFilteredUsers([...filteredUsers, userName]);
     }
   };
-
+  const getUserColor = (userName) => {
+    if (!userName) return "#00aa00";
+    const user = userList.find((u) => u.name === userName);
+    if (!user) return "#00aa00";
+    if (user.gender === "男") return "#A7C7E7";
+    if (user.gender === "女") return "#F8C8DC";
+    return "#00aa00";
+  };
   return (
     <div className={`user-list ${userListCollapsed ? "collapsed" : ""}`}>
       <div
@@ -69,7 +76,14 @@ export default function UserList({
                   />
                 )}
 
-                {u.name} [Lv.{formatLv(u.type === "guest" ? 1 : u.level)}] ({u.gender}) {u.type === "AI" && "(AI)"}
+                <span
+                  className="user-name"
+                  style={{ color: getUserColor(u.name) }}
+                >
+                  {u.name}
+                </span>
+                &nbsp;
+                [Lv.{formatLv(u.type === "guest" ? 1 : u.level)}] ({u.gender}) {u.type === "AI" && "(AI)"}
 
                 {canKick && (
                   <button

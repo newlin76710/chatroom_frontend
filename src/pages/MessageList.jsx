@@ -37,8 +37,8 @@ export default function MessageList({
     if (!userName) return "#00aa00"; // 未定
     const user = userList.find((u) => u.name === userName);
     if (!user) return "#00aa00"; // 未定
-    if (user.gender === "男") return "#3399ff"; // 男生青藍
-    if (user.gender === "女") return "#ff66aa"; // 女生粉紅
+    if (user.gender === "男") return "#A7C7E7"; // 男生青藍
+    if (user.gender === "女") return "#F8C8DC"; // 女生粉紅
     return "#00aa00"; // 未定
   };
 
@@ -122,7 +122,7 @@ export default function MessageList({
                   <span
                     style={{
                       fontSize: "0.7rem",
-                      color: tag === "(私聊)" ? "red" : "#ffd36a",
+                      color: tag === "(私聊)" ? "#B84A4A" : "#ffd36a",
                       marginRight: "4px",
                     }}
                   >
@@ -185,7 +185,7 @@ export default function MessageList({
 
                 {/* 管理員 IP */}
                 {Number(level) === Number(AML) && m.ip && (
-                  <span style={{ color: "#ff5555", marginLeft: "4px" }}>
+                  <span style={{ color: "#B84A4A", marginLeft: "4px" }}>
                     (IP: {m.ip})
                   </span>
                 )}
