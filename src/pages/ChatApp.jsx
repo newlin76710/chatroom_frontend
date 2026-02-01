@@ -478,7 +478,6 @@ export default function ChatApp() {
                 >
                   {name}
                 </span>
-                &nbsp;({gender})
                 {sessionStorage.getItem("type") !== "guest" && level < ANL - 1 ? ` 積分:${exp}` : ""}
                 <span className="exp-tip-inline">
                   {expTips.map((tip) => <span key={tip.id} className="exp-tip">{tip.value}</span>)}
