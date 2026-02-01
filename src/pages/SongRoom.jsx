@@ -88,7 +88,7 @@ export default function SongRoom({ room, name, socket, currentSinger }) {
           cursor: buttonDisabled ? "not-allowed" : "pointer",
         }}
       >
-        {singing ? "🛑 停止唱" : "🎤 搶 Mic"}
+        {singing ? "🛑 停止唱" : "🎤 上麥"}
       </button>
     </div>
   );
