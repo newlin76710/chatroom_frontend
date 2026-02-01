@@ -22,7 +22,7 @@ export default function MessageList({
   typing = "",
   messagesEndRef,
   onSelectTarget,
-  userList = {}, // 這裡接 userList
+  userList = [],
 }) {
   const AML = import.meta.env.VITE_ADMIN_MAX_LEVEL || 99;
 
@@ -32,14 +32,14 @@ export default function MessageList({
     }
   };
 
-  // 根據 userList 的 gender 決定顏色，包括自己
+  // 根據 userList 的 gender 決定顏色
   const getUserColor = (userName) => {
-    if (!userName) return "#00aa00"; // 未定
+    if (!userName) return "#00aa00";
     const user = userList.find((u) => u.name === userName);
-    if (!user) return "#00aa00"; // 未定
-    if (user.gender === "男") return "#A7C7E7"; // 男生青藍
-    if (user.gender === "女") return "#F8C8DC"; // 女生粉紅
-    return "#00aa00"; // 未定
+    if (!user) return "#00aa00";
+    if (user.gender === "男") return "#A7C7E7";
+    if (user.gender === "女") return "#F8C8DC";
+    return "#00aa00";
   };
 
   return (
@@ -58,25 +58,49 @@ export default function MessageList({
           const targetName = safeText(m.target);
           const messageText = safeText(m.message);
           const timestamp = m.timestamp || new Date().toLocaleTimeString();
+
           const isSelf = userName === name;
           const isSystem = userName === "系統";
 
-          // 訊息顏色
+          /* =======================
+             跟自己有關的判斷（重點）
+          ======================= */
+          const isRelatedToMe =
+            // 自己發言
+            isSelf ||
+
+            // 私聊：自己是收或發
+            (m.mode === "private" &&
+              (m.user?.name === name || m.target === name)) ||
+
+            // 公開對象：自己是收或發
+            (m.mode === "publicTarget" &&
+              (m.user?.name === name || m.target === name)) ||
+
+            // 系統訊息提到自己
+            (isSystem && messageText?.includes(name));
+
+          // 訊息文字顏色
           let color = "#eee";
           if (m.color) color = m.color;
           else if (isSystem && messageText?.includes("進入聊天室")) color = "#ff9900";
           else if (isSystem) color = "#BBECE2";
           else if (isSelf) color = "#fff";
 
+          // 底色（只給跟自己有關的）
+          const bgColor = isRelatedToMe
+            ? "#004477"
+            : "transparent";
+
           // 標籤
           const tag =
             m.mode === "private"
               ? "(私聊)"
               : m.mode === "publicTarget"
-                ? "(公開對象)"
-                : "";
+              ? "(公開對象)"
+              : "";
 
-          // 系統訊息中的使用者名稱
+          // 系統「進入聊天室」解析
           const enteringUserMatch = isSystem
             ? messageText.match(/^(.+) 進入聊天室$/)
             : null;
@@ -106,11 +130,14 @@ export default function MessageList({
                 />
               )}
 
-              {/* 訊息文字 */}
+              {/* 訊息內容 */}
               <div
                 style={{
                   maxWidth: "75%",
                   color,
+                  background: bgColor,
+                  padding: isRelatedToMe ? "6px 10px" : "0",
+                  borderRadius: isRelatedToMe ? "8px" : "0",
                   fontSize: "1rem",
                   whiteSpace: "pre-wrap",
                   wordBreak: "break-word",
@@ -130,7 +157,7 @@ export default function MessageList({
                   </span>
                 )}
 
-                {/* 發言者名稱 */}
+                {/* 發言者 */}
                 <span
                   style={{
                     fontWeight: "bold",
@@ -138,12 +165,11 @@ export default function MessageList({
                     color: isSystem ? color : getUserColor(userName),
                   }}
                   onClick={() => !isSystem && handleSelectUser(userName)}
-                  title={!isSystem ? "點擊與此使用者私聊" : ""}
                 >
                   {userName}
                 </span>
 
-                {/* 系統訊息進入聊天室 */}
+                {/* 系統進入聊天室 */}
                 {enteringUser ? (
                   <>
                     ：
@@ -151,10 +177,9 @@ export default function MessageList({
                       style={{
                         fontWeight: "bold",
                         cursor: "pointer",
-                        color: color, // 系統訊息顏色
+                        color,
                       }}
                       onClick={() => handleSelectUser(enteringUser)}
-                      title="點擊與此使用者私聊"
                     >
                       {enteringUser}
                     </span>
@@ -173,7 +198,6 @@ export default function MessageList({
                             color: getUserColor(targetName),
                           }}
                           onClick={() => handleSelectUser(targetName)}
-                          title="點擊選擇此使用者為對象"
                         >
                           {targetName}
                         </span>
@@ -189,7 +213,6 @@ export default function MessageList({
                     (IP: {m.ip})
                   </span>
                 )}
-
 
                 {/* 時間 */}
                 <span
@@ -207,7 +230,7 @@ export default function MessageList({
           );
         })}
 
-      {/* typing 提示 */}
+      {/* typing */}
       {typing && (
         <div
           className="typing fade-in"
