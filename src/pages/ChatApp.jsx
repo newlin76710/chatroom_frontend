@@ -487,12 +487,12 @@ export default function ChatApp() {
                 </span>
               </span>
               <button onClick={leaveRoom}>離開</button>
-              <div className="video-request">
-                <input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="YouTube 連結" />
-                <button onClick={playVideo}>🎵 點播</button>
-              </div>
               {isMember ? (
                 <>
+                  <div className="video-request">
+                    <input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="YouTube 連結" />
+                    <button onClick={playVideo}>🎵 點播</button>
+                  </div>
                   <button
                     onClick={() => setShowSongPanel(!showSongPanel)}
                     disabled={currentSinger && currentSinger !== name}
@@ -505,17 +505,29 @@ export default function ChatApp() {
                     🎤 唱歌
                   </button>
                   {showSongPanel && (
-                    <SongRoom room={room} name={name} socket={socket} currentSinger={currentSinger}/>
+                    <SongRoom room={room} name={name} socket={socket} currentSinger={currentSinger} />
                   )}
                 </>
               ) : (
-                <button
-                  disabled
-                  title="登入會員即可使用唱歌功能"
-                  style={{ opacity: 0.5, cursor: "not-allowed" }}
-                >
-                  🎤 唱歌（限會員）
-                </button>
+                <>
+                  <div className="video-request">
+                    <input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="YouTube 連結" />
+                    <button
+                      disabled
+                      title="登入會員即可使用點播功能"
+                      style={{ opacity: 0.5, cursor: "not-allowed" }}
+                    >
+                      🎵 點播（限會員）
+                    </button>
+                  </div>
+                  <button
+                    disabled
+                    title="登入會員即可使用唱歌功能"
+                    style={{ opacity: 0.5, cursor: "not-allowed" }}
+                  >
+                    🎤 唱歌（限會員）
+                  </button>
+                </>
               )}
               <Listener room={room} name={name} socket={socket} onSingerChange={(singer) => setCurrentSinger(singer)} />
             </div>
