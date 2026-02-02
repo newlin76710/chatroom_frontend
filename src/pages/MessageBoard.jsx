@@ -122,13 +122,17 @@ export default function MessageBoard({ token, myName, myLevel, open, onClose }) 
                             const isAuthor = m.author_name === myName;
                             const canDelete = isAdmin || isAuthor;
 
-                            let contentDisplay = m.content;
+                            let contentDisplay;
                             if (isPrivate) {
-                                if (canDelete) {
-                                    contentDisplay = `這是給版主的悄悄話\n${m.content}`; 
+                                if (isAuthor) {
+                                    contentDisplay = `這是給版主的悄悄話\n${m.content}`; // 留言者本人看到完整內容
+                                } else if (isAdmin) {
+                                    contentDisplay = `這是給版主的悄悄話\n${m.content}`; // 版主看到標記與內容
                                 } else {
                                     contentDisplay = "這是給版主的悄悄話"; // 其他人只看到標記
                                 }
+                            } else {
+                                contentDisplay = m.content; // 公開留言
                             }
 
                             return (
