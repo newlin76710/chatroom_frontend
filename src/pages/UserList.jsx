@@ -12,89 +12,91 @@ export default function UserList({
   kickUser,
   myLevel,
   myName,
-  filteredUsers,       // 新增：被過濾的用戶名列表
-  setFilteredUsers,    // 新增：更新過濾用戶
-  focusInput       
+  filteredUsers = [],
+  setFilteredUsers,
+  focusInput
 }) {
   const formatLv = (lv) => String(lv).padStart(2, "0");
   const AML = import.meta.env.VITE_ADMIN_MIN_LEVEL || 91;
+  const OPENAI = import.meta.env.VITE_OPENAI === "true";
 
-  // 切換過濾 / 解除過濾
+  // 依照 OPENAI 過濾 AI
+  const visibleUsers = userList.filter(u => OPENAI || u.type !== "AI");
+
   const toggleFilter = (userName) => {
+    if (!setFilteredUsers) return;
+
     if (filteredUsers.includes(userName)) {
       setFilteredUsers(filteredUsers.filter(u => u !== userName));
     } else {
       setFilteredUsers([...filteredUsers, userName]);
     }
   };
+
   const getUserColorByGender = (gender) => {
-    if (gender === "男") return "#A7C7E7"; // 天空藍
-    if (gender === "女") return "#F8C8DC"; // 淺粉紅
-    return "#00aa00"; // 未定
+    if (gender === "男") return "#A7C7E7";
+    if (gender === "女") return "#F8C8DC";
+    return "#00aa00";
   };
+
   return (
     <div className={`user-list ${userListCollapsed ? "collapsed" : ""}`}>
       <div
         className="user-list-header"
         onClick={() => setUserListCollapsed(!userListCollapsed)}
       >
-        在線：{userList.length}
+        在線：{visibleUsers.length}
       </div>
 
       {!userListCollapsed &&
-        userList
-          .map((u, idx) => {
-            const avatarUrl = u.avatar || aiAvatars[u.name];
+        visibleUsers.map((u, idx) => {
+          const avatarUrl = u.avatar || aiAvatars[u.name];
 
-            const canKick =
-              myLevel >= AML &&          // 自己 91 等以上
-              u.level < myLevel &&      // 只能踢比自己低等
-              u.name !== myName &&      // 不能踢自己
-              u.type !== "AI" &&
-              kickUser;
+          const canKick =
+            myLevel >= AML &&
+            u.level < myLevel &&
+            u.name !== myName &&
+            kickUser;
 
-            const isFiltered = filteredUsers.includes(u.name);
+          const isFiltered = filteredUsers.includes(u.name);
 
-            return (
-              <div
-                key={`${u.name}-${idx}`}
-                className={`user-item ${u.name === target ? "selected" : ""}`}
-                onClick={() => {
-                  setChatMode("private");
-                  setTarget(u.name);
-                  focusInput?.();
-                }}
+          return (
+            <div
+              key={`${u.name}-${idx}`}
+              className={`user-item ${u.name === target ? "selected" : ""}`}
+              onClick={() => {
+                setChatMode("private");
+                setTarget(u.name);
+                focusInput?.();
+              }}
+            >
+              {avatarUrl && (
+                <img src={avatarUrl} alt={u.name} className="user-avatar" />
+              )}
+
+              <span
+                className="user-name"
+                style={{ color: getUserColorByGender(u.gender) }}
               >
-                {avatarUrl && (
-                  <img
-                    src={avatarUrl}
-                    alt={u.name}
-                    className="user-avatar"
-                  />
-                )}
+                {u.name}
+              </span>
+              &nbsp;
+              [Lv.{formatLv(u.type === "guest" ? 1 : u.level)}] {u.type === "AI" && "(AI)"}
 
-                <span
-                  className="user-name"
-                  style={{ color: getUserColorByGender(u.gender) }}
+              {canKick && (
+                <button
+                  className="kick-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    kickUser(u.name);
+                  }}
                 >
-                  {u.name}
-                </span>
-                &nbsp;
-                [Lv.{formatLv(u.type === "guest" ? 1 : u.level)}] {u.type === "AI" && "(AI)"}
+                  踢出
+                </button>
+              )}
 
-                {canKick && (
-                  <button
-                    className="kick-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      kickUser(u.name);
-                    }}
-                  >
-                    踢出
-                  </button>
-                )}
-
-                {/* 過濾按鈕 */}
+              {/* 過濾按鈕，不管 OPENAI */}
+              {setFilteredUsers && (
                 <button
                   className="filter-btn"
                   style={{ marginLeft: "4px", fontSize: "0.7rem" }}
@@ -105,9 +107,10 @@ export default function UserList({
                 >
                   {isFiltered ? "解除" : "過濾"}
                 </button>
-              </div>
-            );
-          })}
+              )}
+            </div>
+          );
+        })}
     </div>
   );
 }
