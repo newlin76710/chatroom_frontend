@@ -45,7 +45,7 @@ export default function MessageBoard({ token, myName, myLevel, open, onClose }) 
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify({ content, private: isPrivate }),
+                body: JSON.stringify({ content, isPrivate: isPrivate }),
             });
             if (!res.ok) {
                 const data = await res.json().catch(() => ({}));
