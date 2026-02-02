@@ -11,6 +11,7 @@ import UserList from "./UserList";
 import AdminToolPanel from "./AdminToolPanel";
 import QuickPhrasePanel from "./QuickPhrasePanel";
 import AnnouncementPanel from "./AnnouncementPanel";
+import MessageBoard from "./MessageBoard";
 import { aiAvatars } from "./aiConfig";
 import "./ChatApp.css";
 
@@ -72,6 +73,7 @@ export default function ChatApp() {
     sessionStorage.getItem("chatColor") || "#ffffff"
   );
   const [showAnnouncement, setShowAnnouncement] = useState(false);
+  const [showMessageBoard, setShowMessageBoard] = useState(false);
   const [filteredUsers, setFilteredUsers] = useState([]); // 過濾用戶名
   const inputRef = useRef(null);
   const userType = sessionStorage.getItem("type") || "guest";
@@ -456,6 +458,20 @@ export default function ChatApp() {
             >
               📢公告
             </button>
+            <button
+              onClick={() => setShowMessageBoard(true)}
+              style={{
+                backgroundColor: "#FFD700", // 黃色
+                color: "#000",
+                border: "none",
+                padding: "4px 8px",
+                borderRadius: "4px",
+                cursor: "pointer",
+                marginLeft: "6px",
+              }}
+            >
+              💬 留言板
+            </button>
           </div>
 
         </div>
@@ -464,6 +480,13 @@ export default function ChatApp() {
           onClose={() => setShowAnnouncement(false)}
           myLevel={level}
           token={token}
+        />
+        <MessageBoard
+          token={token}
+          myName={name}
+          myLevel={level}
+          open={showMessageBoard}
+          onClose={() => setShowMessageBoard(false)}
         />
         {!joined ? (
           <button onClick={loginGuest}>訪客登入</button>

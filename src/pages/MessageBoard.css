@@ -1,0 +1,106 @@
+/* 外層遮罩 */
+.message-board-overlay {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 350px;
+  height: 100%;
+  background: rgba(0,0,0,0.3);
+  z-index: 9999;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* 右側彈窗 */
+.message-board {
+  width: 100%;
+  max-width: 350px;
+  height: 100%;
+  background: #1a1a1a;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  box-shadow: -3px 0 5px rgba(0,0,0,0.5);
+}
+
+/* 標題列 */
+.message-board-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.close-btn {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+/* 留言輸入區 */
+.message-input {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 10px;
+}
+
+.message-input textarea {
+  width: 100%;
+  resize: none;
+  padding: 6px;
+  border-radius: 4px;
+  border: 1px solid #444;
+  background: #222;
+  color: #fff;
+}
+
+.message-input label {
+  font-size: 0.8rem;
+  margin: 4px 0;
+}
+
+.message-input button {
+  margin-top: 4px;
+  padding: 6px;
+  border: none;
+  border-radius: 4px;
+  background: #007bff;
+  color: #fff;
+  cursor: pointer;
+}
+
+/* 留言列表 */
+.message-list {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.message-item {
+  padding: 6px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid #333;
+}
+
+.message-item.private {
+  background: #333;
+  color: #ffcc00; /* 悄悄話顏色 */
+}
+
+.message-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  margin-top: 2px;
+  color: #aaa;
+}
+
+.delete-btn {
+  background: transparent;
+  border: none;
+  color: #f55;
+  cursor: pointer;
+}
