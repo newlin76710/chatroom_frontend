@@ -124,10 +124,8 @@ export default function MessageBoard({ token, myName, myLevel, open, onClose }) 
 
                             let contentDisplay = m.content;
                             if (isPrivate) {
-                                if (isAdmin) {
-                                    contentDisplay = `這是給版主的悄悄話\n${m.content}`; // 板主看到標記與內容
-                                } else if (isAuthor) {
-                                    contentDisplay = m.content; // 留言者本人看到完整內容
+                                if (canDelete) {
+                                    contentDisplay = `這是給版主的悄悄話\n${m.content}`; 
                                 } else {
                                     contentDisplay = "這是給版主的悄悄話"; // 其他人只看到標記
                                 }
