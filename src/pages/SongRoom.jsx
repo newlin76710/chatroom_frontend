@@ -109,7 +109,7 @@ export default function SongRoom({ room, name, socket, currentSinger }) {
         {singing ? "🛑 下麥" : "🎤 上麥"}
       </button>
 
-      <button
+      {/* <button
         onClick={shareTabAudio}
         disabled={!singing || sharing}
         title={!singing ? "請先上麥" : sharing ? "已分享分頁音" : ""}
@@ -119,7 +119,7 @@ export default function SongRoom({ room, name, socket, currentSinger }) {
         }}
       >
         {sharing ? "✅ 已分享分頁音" : "📢 分享分頁音"}
-      </button>
+      </button> */}
     </div>
   );
 }
