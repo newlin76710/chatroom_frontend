@@ -21,6 +21,7 @@ const RN = import.meta.env.VITE_ROOM_NAME || "windsong";
 const CN = import.meta.env.VITE_CHATROOM_NAME || "聽風的歌";
 const AML = import.meta.env.VITE_ADMIN_MAX_LEVEL || 99;
 const ANL = import.meta.env.VITE_ADMIN_MIN_LEVEL || 91;
+const OPENAI = import.meta.env.VITE_OPENAI === "true";
 
 const safeText = (v) => {
   if (v === null || v === undefined) return "";
@@ -79,6 +80,7 @@ export default function ChatApp() {
   const userType = sessionStorage.getItem("type") || "guest";
   const isMember = userType === "account";
   const [currentSinger, setCurrentSinger] = useState(null);
+  // 依照 OPENAI 過濾 AI
 
   // --- 初始化 sessionStorage ---
   useEffect(() => {
@@ -113,9 +115,11 @@ export default function ChatApp() {
   useEffect(() => {
     const handleUpdateUsers = (list = []) => {
       if (!Array.isArray(list)) return;
-
+      const filtered = OPENAI
+        ? list
+        : list.filter(u => u?.type !== "AI");
       setUserList(
-        list
+        filtered
           .map((u, i) => ({
             id: u?.id || i,
             name: safeText(u?.name || u?.user),
