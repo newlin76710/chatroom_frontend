@@ -582,7 +582,6 @@ export default function ChatApp() {
               ) : (
                 <>
                   <div className="video-request">
-                    <input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="YouTube 連結" />
                     <button
                       disabled
                       title="登入會員即可使用點播功能"
