@@ -41,9 +41,13 @@ const formatLv = (lv) => String(lv).padStart(2, "0");
 let globalSocket = null;
 if (!globalSocket) {
   globalSocket = io(BACKEND, {
-    transports: ["websocket"],
     withCredentials: true,
+    reconnection: true,
+    reconnectionAttempts: Infinity,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 5000,
   });
+
 }
 
 export default function ChatApp() {
@@ -56,6 +60,7 @@ export default function ChatApp() {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [joined, setJoined] = useState(false);
+  const [offline, setOffline] = useState(false);
   const [target, setTarget] = useState("");
   const [typing, setTyping] = useState("");
   const [userList, setUserList] = useState([]);
@@ -183,6 +188,44 @@ export default function ChatApp() {
     socket.on("updateUsers", handleUpdateUsers);
     return () => socket.off("updateUsers", handleUpdateUsers);
   }, [socket, name, level, exp, gender]);
+
+  useEffect(() => {
+    const onDisconnect = (reason) => {
+      console.log("🔴 socket disconnected:", reason);
+      setOffline(true);
+    };
+
+    const onReconnect = () => {
+      console.log("🟢 socket reconnected");
+      setOffline(false);
+
+      // ⭐⭐⭐⭐⭐ 重新 join 房間（極重要）
+      socket.emit("joinRoom", {
+        room,
+        user: {
+          name,
+          type: sessionStorage.getItem("type") || "guest",
+          token: sessionStorage.getItem("token")
+        }
+      });
+    };
+
+    const onConnectError = (err) => {
+      console.log("connect_error:", err.message);
+      setOffline(true);
+    };
+
+    socket.on("disconnect", onDisconnect);
+    socket.io.on("reconnect", onReconnect);
+    socket.on("connect_error", onConnectError);
+
+    return () => {
+      socket.off("disconnect", onDisconnect);
+      socket.io.off("reconnect", onReconnect);
+      socket.off("connect_error", onConnectError);
+    };
+
+  }, [socket, room, name]);
 
   // --- 飄字 ---
   useEffect(() => {
@@ -357,6 +400,10 @@ export default function ChatApp() {
 
   // --- 發訊息 ---
   const send = () => {
+    if (!socket.connected) {
+      alert("你目前離線中，請重新連線");
+      return;
+    }
     if (cooldown || !text.trim() || (chatMode !== "public" && !target)) return;
     const timestamp = new Date().toLocaleTimeString();
 
@@ -463,21 +510,18 @@ export default function ChatApp() {
               📢公告
             </button>
             <button
+              className="announce-btn"
               onClick={() => setShowMessageBoard(true)}
-              style={{
-                backgroundColor: "#FFD700", // 黃色
-                color: "#000",
-                border: "none",
-                padding: "4px 8px",
-                borderRadius: "4px",
-                cursor: "pointer",
-                marginLeft: "6px",
-              }}
+              title="聊天室留言板"
             >
               💬 留言板
             </button>
+            {offline && (
+              <div className="offline-banner">
+                ⚠️ 網路不穩，重新連線中...
+              </div>
+            )}
           </div>
-
         </div>
         <AnnouncementPanel
           open={showAnnouncement}

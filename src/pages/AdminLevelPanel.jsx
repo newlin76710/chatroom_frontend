@@ -16,7 +16,7 @@ export default function AdminLevelPanel({ token, myLevel, minLevel }) {
 
     if (!token || myLevel < minLevel) return null;
 
-    // 載入使用者清單
+    /* ================= 載入使用者 ================= */
     const loadUsers = async (pageNum = 1, search = keyword) => {
         try {
             const res = await fetch(`${BACKEND}/admin/user-levels`, {
@@ -25,47 +25,32 @@ export default function AdminLevelPanel({ token, myLevel, minLevel }) {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify({ page: pageNum, pageSize: PAGE_SIZE, keyword: search }),
+                body: JSON.stringify({
+                    page: pageNum,
+                    pageSize: PAGE_SIZE,
+                    keyword: search,
+                }),
             });
 
+            const data = await res.json();
             if (!res.ok) {
-                const data = await res.json().catch(() => ({}));
-                alert(data.error || "查詢使用者清單失敗");
+                alert(data.error || "查詢使用者失敗");
                 return;
             }
 
-            const data = await res.json();
-
-            // 不用再過濾 account_type，因為 API 已經過濾過
-            const filtered = data.users || [];
-
-            setUsers(filtered.map(u => ({ ...u, editLevel: u.level })));
+            setUsers((data.users || []).map(u => ({
+                ...u,
+                editLevel: u.level,
+            })));
             setPage(pageNum);
-            setTotalCount(data.total || (filtered.length * 10 || 200));
+            setTotalCount(data.total || 0);
         } catch (err) {
             console.error(err);
-            alert("查詢使用者清單失敗");
+            alert("查詢使用者失敗");
         }
     };
 
-    const handleOpen = () => {
-        setOpen(true);
-        loadUsers(1);
-    };
-
-    const handlePage = (newPage) => {
-        if (newPage < 1 || newPage > totalPages) return;
-        loadUsers(newPage);
-    };
-
-    const handleSearch = () => {
-        loadUsers(1, keyword);
-    };
-
-    const handleInputChange = (id, value) => {
-        setUsers(prev => prev.map(u => u.id === id ? { ...u, editLevel: value } : u));
-    };
-
+    /* ================= 修改等級 ================= */
     const handleLevelChange = async (username, newLevel) => {
         if (!window.confirm(`確定將 ${username} 的等級設為 ${newLevel} 嗎？`)) return;
 
@@ -76,32 +61,69 @@ export default function AdminLevelPanel({ token, myLevel, minLevel }) {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify({ username, level: Number(newLevel) }),
+                body: JSON.stringify({
+                    username,
+                    level: Number(newLevel),
+                }),
             });
 
             const data = await res.json();
-            if (data.success) {
-                alert("更新成功");
-                // 更新前端 state
-                setUsers(prev =>
-                    prev.map(u =>
-                        u.username === username ? { ...u, level: Number(newLevel), editLevel: Number(newLevel) } : u
-                    )
-                );
-            } else {
+            if (!res.ok) {
                 alert(data.error || "更新失敗");
+                return;
             }
+
+            alert("更新成功");
+            setUsers(prev =>
+                prev.map(u =>
+                    u.username === username
+                        ? { ...u, level: Number(newLevel), editLevel: Number(newLevel) }
+                        : u
+                )
+            );
         } catch (err) {
             console.error(err);
             alert("更新失敗");
         }
     };
 
+    /* ================= 刪除使用者 ================= */
+    const handleDeleteUser = async (username) => {
+        if (!window.confirm(`⚠️ 確定要永久刪除使用者「${username}」嗎？\n此動作無法復原！`))
+            return;
+
+        try {
+            const res = await fetch(`${BACKEND}/admin/delete-user`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ username }),
+            });
+
+            const data = await res.json();
+            if (!res.ok) {
+                alert(data.error || "刪除失敗");
+                return;
+            }
+
+            alert("使用者已刪除");
+            setUsers(prev => prev.filter(u => u.username !== username));
+            setTotalCount(c => Math.max(0, c - 1));
+        } catch (err) {
+            console.error(err);
+            alert("刪除失敗");
+        }
+    };
+
+    /* ================= 分頁按鈕 ================= */
     const renderPageButtons = () => {
         const maxButtons = 10;
         let start = Math.max(1, page - Math.floor(maxButtons / 2));
         let end = Math.min(totalPages, start + maxButtons - 1);
-        if (end - start < maxButtons - 1) start = Math.max(1, end - maxButtons + 1);
+        if (end - start < maxButtons - 1)
+            start = Math.max(1, end - maxButtons + 1);
 
         return Array.from({ length: end - start + 1 }, (_, i) => {
             const p = start + i;
@@ -109,9 +131,8 @@ export default function AdminLevelPanel({ token, myLevel, minLevel }) {
                 <button
                     key={p}
                     className="admin-btn"
-                    style={{ backgroundColor: p === page ? "#1565c0" : "#1976d2" }}
-                    onClick={() => handlePage(p)}
                     disabled={p === page}
+                    onClick={() => loadUsers(p)}
                 >
                     {p}
                 </button>
@@ -121,13 +142,13 @@ export default function AdminLevelPanel({ token, myLevel, minLevel }) {
 
     return (
         <>
-            <button className="admin-btn" onClick={handleOpen}>
+            <button className="admin-btn" onClick={() => { setOpen(true); loadUsers(1); }}>
                 🛡 管理使用者等級
             </button>
 
             {open && (
                 <div className="admin-overlay" onClick={() => setOpen(false)}>
-                    <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
+                    <div className="admin-modal" onClick={e => e.stopPropagation()}>
                         <div className="admin-header">
                             <h3>使用者等級管理</h3>
                             <button onClick={() => setOpen(false)}>✖</button>
@@ -136,71 +157,85 @@ export default function AdminLevelPanel({ token, myLevel, minLevel }) {
                         {/* 搜尋 */}
                         <div style={{ marginBottom: "10px" }}>
                             <input
-                                type="text"
-                                placeholder="搜尋使用者名稱"
+                                placeholder="搜尋使用者"
                                 value={keyword}
-                                onChange={(e) => setKeyword(e.target.value)}
-                                style={{ marginRight: "10px", padding: "4px" }}
+                                onChange={e => setKeyword(e.target.value)}
                             />
-                            <button className="admin-btn" onClick={handleSearch}>搜尋</button>
+                            <button className="admin-btn" onClick={() => loadUsers(1, keyword)}>
+                                搜尋
+                            </button>
                         </div>
 
+                        {/* 表格 + 滾動容器 */}
                         <div className="admin-table-wrapper">
                             <table className="admin-table">
                                 <thead>
                                     <tr>
                                         <th>帳號</th>
                                         <th>等級</th>
-                                        <th>創建時間</th>
+                                        <th>建立時間</th>
+                                        <th>最近登入</th>
                                         <th>操作</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {users.length > 0 ? (
-                                        users.map(u => (
-                                            <tr key={u.id}>
-                                                <td>{u.username}</td>
-                                                <td>{u.level}</td>
-                                                <td>{new Date(u.created_at).toLocaleString()}</td>
-                                                <td>
-                                                    <input
-                                                        type="number"
-                                                        min="1"
-                                                        max={myLevel}
-                                                        value={u.editLevel}
-                                                        style={{ width: "50px", marginRight: "5px" }}
-                                                        onChange={(e) => handleInputChange(u.id, e.target.value)}
-                                                        onKeyDown={(e) => {
-                                                            if (e.key === "Enter") handleLevelChange(u.username, u.editLevel);
-                                                        }}
-                                                    />
-                                                    <button
-                                                        className="admin-btn"
-                                                        onClick={() => handleLevelChange(u.username, u.editLevel)}
-                                                    >
-                                                        修改
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    ) : (
+                                    {users.length > 0 ? users.map(u => (
+                                        <tr key={u.id}>
+                                            <td>{u.username}</td>
+                                            <td>{u.level}</td>
+                                            <td>{new Date(u.created_at).toLocaleString()}</td>
+                                            <td>{u.last_login_at ? new Date(u.last_login_at).toLocaleString() : "-"}</td>
+                                            <td>
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    max={myLevel}
+                                                    value={u.editLevel}
+                                                    style={{ width: "50px", marginRight: "6px" }}
+                                                    onChange={e =>
+                                                        setUsers(prev =>
+                                                            prev.map(x =>
+                                                                x.id === u.id
+                                                                    ? { ...x, editLevel: e.target.value }
+                                                                    : x
+                                                            )
+                                                        )
+                                                    }
+                                                />
+                                                <button
+                                                    className="admin-btn"
+                                                    onClick={() => handleLevelChange(u.username, u.editLevel)}
+                                                    style={{ marginRight: "6px" }}
+                                                >
+                                                    修改
+                                                </button>
+                                                <button
+                                                    className="admin-btn"
+                                                    style={{ background: "#c62828", color: "#fff" }}
+                                                    onClick={() => handleDeleteUser(u.username)}
+                                                >
+                                                    刪除
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    )) : (
                                         <tr>
-                                            <td colSpan={4} style={{ textAlign: "center" }}>無資料</td>
+                                            <td colSpan="5" style={{ textAlign: "center" }}>無資料</td>
                                         </tr>
                                     )}
                                 </tbody>
                             </table>
+                        </div>
 
-                            {/* 分頁 */}
-                            <div className="admin-pagination">
-                                <button className="admin-btn" onClick={() => handlePage(page - 1)} disabled={page <= 1}>
-                                    上一頁
-                                </button>
-                                {renderPageButtons()}
-                                <button className="admin-btn" onClick={() => handlePage(page + 1)} disabled={page >= totalPages}>
-                                    下一頁
-                                </button>
-                            </div>
+                        {/* 分頁 */}
+                        <div className="admin-pagination">
+                            <button className="admin-btn" disabled={page <= 1} onClick={() => loadUsers(page - 1)}>
+                                上一頁
+                            </button>
+                            {renderPageButtons()}
+                            <button className="admin-btn" disabled={page >= totalPages} onClick={() => loadUsers(page + 1)}>
+                                下一頁
+                            </button>
                         </div>
                     </div>
                 </div>

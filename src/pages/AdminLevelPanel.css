@@ -86,3 +86,59 @@
   color: #999;
   cursor: not-allowed;
 }
+
+.admin-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.admin-modal {
+    background: #fff;
+    border-radius: 8px;
+    width: 80%;
+    max-width: 900px;
+    max-height: 80vh;        /* Modal 高度限制 */
+    overflow-y: auto;        /* 可以滾動 */
+    padding: 16px;
+    box-sizing: border-box;
+}
+
+.admin-table-wrapper {
+    overflow-y: auto;
+    max-height: 50vh;        /* 表格高度限制 */
+    margin-bottom: 10px;
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.admin-table th, .admin-table td {
+    padding: 8px;
+    border: 1px solid #ccc;
+    text-align: left;
+}
+
+.admin-btn {
+    padding: 4px 8px;
+    margin: 2px;
+    background: #1976d2;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.admin-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
