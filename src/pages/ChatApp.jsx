@@ -66,6 +66,7 @@ export default function ChatApp() {
   const [userList, setUserList] = useState([]);
   const [currentVideo, setCurrentVideo] = useState(null);
   const [videoUrl, setVideoUrl] = useState("");
+  const [closedVideoId, setClosedVideoId] = useState(null);
   const [chatMode, setChatMode] = useState("public");
   const [userListCollapsed, setUserListCollapsed] = useState(false);
   const [showSongPanel, setShowSongPanel] = useState(false);
@@ -287,7 +288,17 @@ export default function ChatApp() {
       ]);
     };
 
-    const handleVideoUpdate = (v) => setCurrentVideo(v || null);
+    const handleVideoUpdate = (v) => {
+      if (!v) {
+        setCurrentVideo(null);
+        return;
+      }
+      const id = extractVideoID(v.url);
+      // ⭐ 如果這首被關掉 → 永遠不要再打開
+      if (closedVideoId === id) return;
+      setCurrentVideo(v);
+    };
+
 
     socket.on("message", handleMessage);
     socket.on("systemMessage", handleSystemMessage);
@@ -703,7 +714,11 @@ export default function ChatApp() {
             <VideoPlayer
               video={currentVideo}
               extractVideoID={extractVideoID}
-              onClose={() => setCurrentVideo(null)}
+              onClose={() => {
+                const id = extractVideoID(currentVideo?.url);
+                setClosedVideoId(id);
+                setCurrentVideo(null);
+              }}
             />
           </VideoSafeBoundary>
         </div>
