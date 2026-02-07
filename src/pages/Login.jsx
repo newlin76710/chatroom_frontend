@@ -4,6 +4,15 @@ import { aiAvatars } from "./aiConfig";
 
 const BACKEND = import.meta.env.VITE_BACKEND_URL || "http://localhost:10000";
 const CN = import.meta.env.VITE_CHATROOM_NAME || "聽風的歌";
+// 計算暱稱長度（中文=2，英文=1）
+const getNicknameLength = (str) => {
+  let len = 0;
+  for (const ch of str) {
+    if (/[\u4e00-\u9fa5]/.test(ch)) len += 2;
+    else len += 1;
+  }
+  return len;
+};
 
 const inputStyle = {
   width: "100%",
@@ -157,6 +166,15 @@ export default function Login() {
     }
   };
 
+  const handleUsernameChange = (e) => {
+    const value = e.target.value;
+    if (getNicknameLength(value) > 12) {
+      alert("暱稱最多 6 個中文字 或 12 個英數字");
+      return;
+    }
+    setUsername(value);
+  };
+
   return (
     <div style={{ maxWidth: 420, margin: "60px auto", padding: 20 }}>
       <h2 style={{ textAlign: "center", marginBottom: 10 }}>{CN}聊天室</h2>
@@ -240,7 +258,7 @@ export default function Login() {
             style={inputStyle}
             placeholder="暱稱"
             value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            onChange={handleUsernameChange}
           />
           <input
             style={inputStyle}
@@ -311,7 +329,7 @@ export default function Login() {
             style={inputStyle}
             placeholder="輸入暱稱"
             value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            onChange={handleUsernameChange}
           />
           <button style={buttonStyle} onClick={guestLogin}>
             以訪客身分進入
@@ -331,7 +349,7 @@ export default function Login() {
                 style={inputStyle}
                 placeholder="帳號"
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                onChange={handleUsernameChange}
               />
               <input
                 style={inputStyle}
@@ -419,7 +437,7 @@ export default function Login() {
                 style={inputStyle}
                 placeholder="暱稱"
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                onChange={handleUsernameChange}
               />
               <input
                 style={inputStyle}

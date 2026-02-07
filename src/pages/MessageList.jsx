@@ -1,4 +1,4 @@
-// MessageList.jsx
+import { useEffect, useRef } from "react";
 import { aiAvatars } from "./aiConfig";
 import "./MessageList.css";
 
@@ -26,13 +26,64 @@ export default function MessageList({
 }) {
   const AML = import.meta.env.VITE_ADMIN_MAX_LEVEL || 99;
 
+  // ⭐⭐⭐⭐⭐ 自動滾動核心
+  const containerRef = useRef(null);
+  const shouldAutoScrollRef = useRef(true);
+
+  /* ===============================
+     判斷是否在底部
+  =============================== */
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const onScroll = () => {
+      const threshold = 120; // ⭐ 容錯距離
+
+      const isNearBottom =
+        el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+
+      shouldAutoScrollRef.current = isNearBottom;
+    };
+
+    el.addEventListener("scroll", onScroll);
+
+    return () => el.removeEventListener("scroll", onScroll);
+  }, []);
+
+  /* ===============================
+     新訊息來時 → 是否滾動
+  =============================== */
+  useEffect(() => {
+    if (!messages.length) return;
+
+    const lastMsg = messages[messages.length - 1];
+    const isSelf = lastMsg?.user?.name === name;
+
+    // ⭐ 自己 → 強制到底
+    if (isSelf) {
+      messagesEndRef?.current?.scrollIntoView({
+        behavior: "auto",
+      });
+      return;
+    }
+
+    // ⭐ 別人 → 只有接近底部才滾
+    if (!shouldAutoScrollRef.current) return;
+
+    messagesEndRef?.current?.scrollIntoView({
+      behavior: "smooth",
+    });
+
+  }, [messages, name]);
+
+
   const handleSelectUser = (selectedName) => {
     if (onSelectTarget && selectedName && selectedName !== name) {
       onSelectTarget(selectedName);
     }
   };
 
-  // 根據 userList 的 gender 決定顏色
   const getUserColor = (userName) => {
     if (!userName) return "#00aa00";
     const user = userList.find((u) => u.name === userName);
@@ -43,7 +94,7 @@ export default function MessageList({
   };
 
   return (
-    <div className="message-list">
+    <div ref={containerRef} className="message-list">
       {messages
         .filter(
           (m) =>
@@ -62,45 +113,29 @@ export default function MessageList({
           const isSelf = userName === name;
           const isSystem = userName === "系統";
 
-          /* =======================
-             跟自己有關的判斷（重點）
-          ======================= */
           const isRelatedToMe =
-            // 自己發言
             isSelf ||
-
-            // 私聊：自己是收或發
             (m.mode === "private" &&
               (m.user?.name === name || m.target === name)) ||
-
-            // 公開對象：自己是收或發
             (m.mode === "publicTarget" &&
               (m.user?.name === name || m.target === name)) ||
-
-            // 系統訊息提到自己
             (isSystem && messageText?.includes(name));
 
-          // 訊息文字顏色
           let color = "#eee";
           if (m.color) color = m.color;
           else if (isSystem && messageText?.includes("進入聊天室")) color = "#ff9900";
           else if (isSystem) color = "#BBECE2";
           else if (isSelf) color = "#fff";
 
-          // 底色（只給跟自己有關的）
-          const bgColor = isRelatedToMe
-            ? "#004477"
-            : "transparent";
+          const bgColor = isRelatedToMe ? "#004477" : "transparent";
 
-          // 標籤
           const tag =
             m.mode === "private"
               ? "(私聊)"
               : m.mode === "publicTarget"
-              ? "(公開對象)"
-              : "";
+                ? ""
+                : "";
 
-          // 系統「進入聊天室」解析
           const enteringUserMatch = isSystem
             ? messageText.match(/^(.+) 進入聊天室$/)
             : null;
@@ -117,7 +152,6 @@ export default function MessageList({
                 marginBottom: "6px",
               }}
             >
-              {/* Avatar */}
               {!isSelf && !isSystem && (
                 <img
                   src={
@@ -130,7 +164,6 @@ export default function MessageList({
                 />
               )}
 
-              {/* 訊息內容 */}
               <div
                 style={{
                   maxWidth: "75%",
@@ -144,12 +177,11 @@ export default function MessageList({
                   lineHeight: "1.4",
                 }}
               >
-                {/* 標籤 */}
                 {tag && (
                   <span
                     style={{
                       fontSize: "0.7rem",
-                      color: tag === "(私聊)" ? "#B84A4A" : "#ffd36a",
+                      color: tag === "(私聊)" ? "#e60909" : "#ffd36a",
                       marginRight: "4px",
                     }}
                   >
@@ -157,7 +189,6 @@ export default function MessageList({
                   </span>
                 )}
 
-                {/* 發言者 */}
                 <span
                   style={{
                     fontWeight: "bold",
@@ -169,7 +200,6 @@ export default function MessageList({
                   {userName}
                 </span>
 
-                {/* 系統進入聊天室 */}
                 {enteringUser ? (
                   <>
                     ：
@@ -187,7 +217,6 @@ export default function MessageList({
                   </>
                 ) : (
                   <>
-                    {/* 發言對象 */}
                     {targetName && (
                       <>
                         <span> → </span>
@@ -207,14 +236,12 @@ export default function MessageList({
                   </>
                 )}
 
-                {/* 管理員 IP */}
                 {Number(level) === Number(AML) && m.ip && (
                   <span style={{ color: "#B84A4A", marginLeft: "4px" }}>
                     (IP: {m.ip})
                   </span>
                 )}
 
-                {/* 時間 */}
                 <span
                   style={{
                     fontSize: "0.7rem",
@@ -230,7 +257,6 @@ export default function MessageList({
           );
         })}
 
-      {/* typing */}
       {typing && (
         <div
           className="typing fade-in"

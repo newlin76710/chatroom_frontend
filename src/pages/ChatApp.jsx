@@ -73,6 +73,8 @@ export default function ChatApp() {
   const [cooldown, setCooldown] = useState(false);
   const [placeholder, setPlaceholder] = useState("輸入訊息...");
   const messagesEndRef = useRef(null);
+  const messageContainerRef = useRef(null);
+  const shouldAutoScrollRef = useRef(true);
   const socket = globalSocket;
   const [expTips, setExpTips] = useState([]);
   const [levelUpTips, setLevelUpTips] = useState([]);
@@ -86,7 +88,7 @@ export default function ChatApp() {
   const userType = sessionStorage.getItem("type") || "guest";
   const isMember = userType === "account";
   const [currentSinger, setCurrentSinger] = useState(null);
-  // 依照 OPENAI 過濾 AI
+  const pendingLeaves = useRef(new Map());
 
   // --- 初始化 sessionStorage ---
   useEffect(() => {
@@ -243,11 +245,6 @@ export default function ChatApp() {
     }
   }, [levelUpTips]);
 
-  // --- 自動捲動 ---
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
   // --- Socket 事件 ---
   useEffect(() => {
     const handleMessage = (m) => {
@@ -274,6 +271,50 @@ export default function ChatApp() {
     };
 
     const handleSystemMessage = (m) => {
+      if (!m) return;
+
+      // ===== 判斷離開 =====
+      if (m.includes("離開聊天室")) {
+        const user = m.replace(" 離開聊天室", "");
+
+        const timer = setTimeout(() => {
+          setMessages((s) => [
+            ...s,
+            {
+              user: {
+                name: "系統",
+                avatar: "/avatars/system.png",
+                type: "system",
+              },
+              message: m,
+              timestamp: new Date().toLocaleTimeString(),
+            },
+          ]);
+
+          pendingLeaves.current.delete(user);
+        }, 3000); // ⭐ 可改 3~6 秒
+
+        pendingLeaves.current.set(user, timer);
+        return;
+      }
+
+      // ===== 判斷重新加入 =====
+      if (m.includes("進入聊天室")) {
+        const user = m.replace(" 進入聊天室", "");
+
+        const timer = pendingLeaves.current.get(user);
+
+        if (timer) {
+          // ⭐⭐⭐ reconnect！
+          clearTimeout(timer);
+          pendingLeaves.current.delete(user);
+
+          // 👉 不顯示 join
+          return;
+        }
+      }
+
+      // 正常顯示
       setMessages((s) => [
         ...s,
         {
@@ -282,7 +323,7 @@ export default function ChatApp() {
             avatar: "/avatars/system.png",
             type: "system",
           },
-          message: safeText(m),
+          message: m,
           timestamp: new Date().toLocaleTimeString(),
         },
       ]);
@@ -553,13 +594,13 @@ export default function ChatApp() {
           <>
             <div className="chat-toolbar">
               <span>
-                Hi [Lv.{formatLv(level)}]
+                Hi &nbsp;
                 <span
                   className="chat-username"
                   style={{ color: getUserColorByGender(gender) }}
                 >
                   {name}
-                </span>
+                </span>&nbsp;等級:{formatLv(level)}
                 {sessionStorage.getItem("type") !== "guest" && level < ANL - 1 ? ` 積分:${exp}` : ""}
                 <span className="exp-tip-inline">
                   {expTips.map((tip) => <span key={tip.id} className="exp-tip">{tip.value}</span>)}
@@ -572,7 +613,7 @@ export default function ChatApp() {
               {isMember ? (
                 <>
                   <div className="video-request">
-                    <input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="YouTube 連結" />
+                    <input style={{ width: 130 }} value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="貼上YouTube連結" />
                     <button onClick={playVideo}>🎵 點播</button>
                   </div>
                   <button

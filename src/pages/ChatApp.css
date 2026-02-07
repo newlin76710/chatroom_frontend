@@ -50,7 +50,7 @@ body {
 
 /* 右側聊天室區域（YouTube + userlist, 固定寬 250px） */
 .chat-right {
-  flex: 0 0 330px; /* 固定寬度 */
+  flex: 0 0 300px; /* 固定寬度 */
   display: flex;
   flex-direction: column;
   gap: 10px;
