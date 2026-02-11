@@ -4,15 +4,18 @@ import { aiAvatars } from "./aiConfig";
 
 const BACKEND = import.meta.env.VITE_BACKEND_URL || "http://localhost:10000";
 const CN = import.meta.env.VITE_CHATROOM_NAME || "聽風的歌";
-// 計算暱稱長度（中文=2，英文=1）
+const fullWidthRegex = /[^\u0000-\u00ff]/;
+
 const getNicknameLength = (str) => {
   let len = 0;
+
   for (const ch of str) {
-    if (/[\u4e00-\u9fa5]/.test(ch)) len += 2;
-    else len += 1;
+    len += fullWidthRegex.test(ch) ? 2 : 1;
   }
+
   return len;
 };
+
 
 const inputStyle = {
   width: "100%",

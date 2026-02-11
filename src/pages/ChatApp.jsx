@@ -12,6 +12,7 @@ import AdminToolPanel from "./AdminToolPanel";
 import QuickPhrasePanel from "./QuickPhrasePanel";
 import AnnouncementPanel from "./AnnouncementPanel";
 import MessageBoard from "./MessageBoard";
+import MyMessageLogPanel from "./MyMessageLogPanel";
 import { aiAvatars } from "./aiConfig";
 import "./ChatApp.css";
 
@@ -568,6 +569,10 @@ export default function ChatApp() {
             >
               💬 留言板
             </button>
+            {/* ⭐ 我的發言紀錄（會員限定） */}
+            {isMember && (
+              <MyMessageLogPanel token={token}/>
+            )}
             {offline && (
               <div className="offline-banner">
                 ⚠️ 網路不穩，重新連線中...
@@ -691,7 +696,6 @@ export default function ChatApp() {
               <AdminToolPanel
                 myName={name}
                 myLevel={level}
-                minLevel={AML}
                 token={token}
               />
               <label><input type="radio" checked={chatMode === "public"} onChange={() => { setChatMode("public"); setTarget(""); }} /> 公開</label>

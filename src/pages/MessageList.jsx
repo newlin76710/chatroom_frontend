@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 import { aiAvatars } from "./aiConfig";
 import "./MessageList.css";
 
@@ -26,57 +26,39 @@ export default function MessageList({
 }) {
   const AML = import.meta.env.VITE_ADMIN_MAX_LEVEL || 99;
 
-  // ⭐⭐⭐⭐⭐ 自動滾動核心
   const containerRef = useRef(null);
-  const shouldAutoScrollRef = useRef(true);
 
   /* ===============================
-     判斷是否在底部
+     ⭐ 核心滾動（穩定版）
+     - useLayoutEffect 防止畫面跳動
+     - requestAnimationFrame 等 DOM 長完
+     - 距離底部判斷
   =============================== */
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = containerRef.current;
-    if (!el) return;
-
-    const onScroll = () => {
-      const threshold = 120; // ⭐ 容錯距離
-
-      const isNearBottom =
-        el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
-
-      shouldAutoScrollRef.current = isNearBottom;
-    };
-
-    el.addEventListener("scroll", onScroll);
-
-    return () => el.removeEventListener("scroll", onScroll);
-  }, []);
-
-  /* ===============================
-     新訊息來時 → 是否滾動
-  =============================== */
-  useEffect(() => {
-    if (!messages.length) return;
+    if (!el || !messages.length) return;
 
     const lastMsg = messages[messages.length - 1];
     const isSelf = lastMsg?.user?.name === name;
 
-    // ⭐ 自己 → 強制到底
-    if (isSelf) {
-      messagesEndRef?.current?.scrollIntoView({
-        behavior: "auto",
-      });
-      return;
-    }
+    const distanceFromBottom =
+      el.scrollHeight - el.scrollTop - el.clientHeight;
 
-    // ⭐ 別人 → 只有接近底部才滾
-    if (!shouldAutoScrollRef.current) return;
+    const NEAR_BOTTOM = 120;
 
-    messagesEndRef?.current?.scrollIntoView({
-      behavior: "smooth",
+    requestAnimationFrame(() => {
+      // 自己發言 → 永遠到底
+      if (isSelf) {
+        el.scrollTop = el.scrollHeight;
+        return;
+      }
+
+      // 別人 → 接近底部才滾
+      if (distanceFromBottom < NEAR_BOTTOM) {
+        el.scrollTop = el.scrollHeight;
+      }
     });
-
   }, [messages, name]);
-
 
   const handleSelectUser = (selectedName) => {
     if (onSelectTarget && selectedName && selectedName !== name) {
@@ -123,18 +105,14 @@ export default function MessageList({
 
           let color = "#eee";
           if (m.color) color = m.color;
-          else if (isSystem && messageText?.includes("進入聊天室")) color = "#ff9900";
+          else if (isSystem && messageText?.includes("進入聊天室"))
+            color = "#ff9900";
           else if (isSystem) color = "#BBECE2";
           else if (isSelf) color = "#fff";
 
           const bgColor = isRelatedToMe ? "#004477" : "transparent";
 
-          const tag =
-            m.mode === "private"
-              ? "(私聊)"
-              : m.mode === "publicTarget"
-                ? ""
-                : "";
+          const tag = m.mode === "private" ? "(私聊)" : "";
 
           const enteringUserMatch = isSystem
             ? messageText.match(/^(.+) 進入聊天室$/)
@@ -181,7 +159,7 @@ export default function MessageList({
                   <span
                     style={{
                       fontSize: "0.7rem",
-                      color: tag === "(私聊)" ? "#e60909" : "#ffd36a",
+                      color: "#e60909",
                       marginRight: "4px",
                     }}
                   >
