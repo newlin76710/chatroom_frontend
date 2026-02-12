@@ -9,7 +9,7 @@ import "./AdminToolPanel.css";
 const AML = import.meta.env.VITE_ADMIN_MAX_LEVEL || 99;
 const ANL = import.meta.env.VITE_ADMIN_MIN_LEVEL || 91;
 
-export default function AdminToolPanel({ myLevel, token }) {
+export default function AdminToolPanel({ myName, myLevel, token }) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState("login"); // default
 
@@ -79,7 +79,7 @@ export default function AdminToolPanel({ myLevel, token }) {
             {tab === "message" && <MessageLogPanel token={token} />}
             {tab === "level" && <AdminLevelPanel token={token} myLevel={myLevel} />}
             {tab === "ip" && <AdminIPPanel token={token} />}
-            {tab === "nickname" && <AdminNicknamePanel token={token} />}
+            {tab === "nickname" && <AdminNicknamePanel  myLevel={myLevel} token={token} myName={myName} />}
           </div>
         </div>
       )}

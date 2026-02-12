@@ -96,6 +96,8 @@ export default function QuickPhrasePanel({ token, onSelect }) {
             bottom: "36px",
             right: 0,
             width: "240px",
+            maxHeight: "260px",   // ⭐⭐⭐⭐⭐ 關鍵
+            overflowY: "auto",    // ⭐⭐⭐⭐⭐ 關鍵
             background: "#111",
             border: "1px solid #333",
             borderRadius: "8px",

@@ -4,18 +4,6 @@ import { aiAvatars } from "./aiConfig";
 
 const BACKEND = import.meta.env.VITE_BACKEND_URL || "http://localhost:10000";
 const CN = import.meta.env.VITE_CHATROOM_NAME || "聽風的歌";
-const fullWidthRegex = /[^\u0000-\u00ff]/;
-
-const getNicknameLength = (str) => {
-  let len = 0;
-
-  for (const ch of str) {
-    len += fullWidthRegex.test(ch) ? 2 : 1;
-  }
-
-  return len;
-};
-
 
 const inputStyle = {
   width: "100%",
@@ -170,12 +158,7 @@ export default function Login() {
   };
 
   const handleUsernameChange = (e) => {
-    const value = e.target.value;
-    if (getNicknameLength(value) > 12) {
-      alert("暱稱最多 6 個中文字 或 12 個英數字");
-      return;
-    }
-    setUsername(value);
+    setUsername(e.target.value);
   };
 
   return (

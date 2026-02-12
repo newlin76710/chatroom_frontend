@@ -119,8 +119,6 @@
   100% { opacity: 0.45; }
 }
 
-
-/* ⭐ 如果你有加 placeholder class */
 .video-player-float.placeholder {
-  background: linear-gradient(135deg, #111, #1a1a1a);
+  cursor: default !important; /* 不要再顯示手或轉圈 */
 }
