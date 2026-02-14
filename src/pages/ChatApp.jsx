@@ -90,6 +90,7 @@ export default function ChatApp() {
   const isMember = userType === "account";
   const [currentSinger, setCurrentSinger] = useState(null);
   const pendingLeaves = useRef(new Map());
+  const initializedRef = useRef(false);
 
   // --- 初始化 sessionStorage ---
   useEffect(() => {
@@ -166,8 +167,8 @@ export default function ChatApp() {
 
       // 等級變化
       if (me.level !== level) {
-        if (me.level > level) {
-          setLevelUpTips(s => [...s, { id: Date.now(), value: "LV UP!" }]);
+        if (initializedRef.current && me.level > level) {
+          setLevelUpTips(s => [...s, { id: Date.now(), value: "升級!" }]);
         }
         setLevel(me.level || 1);
         sessionStorage.setItem("level", me.level || 1);
@@ -176,7 +177,7 @@ export default function ChatApp() {
       // EXP 變化（⭐ 重點）
       if (me.exp !== exp) {
         const diff = me.exp - exp;
-        if (diff > 0) {
+        if (diff > 0 && me.level > 1 && me.level < ANL) {
           setExpTips(s => [...s, { id: Date.now(), value: `+${diff}` }]);
         }
         setExp(me.exp || 0);
@@ -187,6 +188,9 @@ export default function ChatApp() {
         setGender(me.gender);
         sessionStorage.setItem("gender", me.gender);
       }
+
+      // ⭐ 第一次 update 完成
+      initializedRef.current = true;
     };
 
     socket.on("updateUsers", handleUpdateUsers);
@@ -571,7 +575,7 @@ export default function ChatApp() {
             </button>
             {/* ⭐ 我的發言紀錄（會員限定） */}
             {isMember && (
-              <MyMessageLogPanel token={token}/>
+              <MyMessageLogPanel token={token} />
             )}
             {offline && (
               <div className="offline-banner">
@@ -606,7 +610,7 @@ export default function ChatApp() {
                 >
                   {name}
                 </span>&nbsp;等級:{formatLv(level)}
-                {sessionStorage.getItem("type") !== "guest" && level < ANL - 1 ? ` 積分:${exp}` : ""}
+                {sessionStorage.getItem("type") !== "guest" && initializedRef.current && level < ANL - 1 ? ` 積分:${exp}` : ""}
                 <span className="exp-tip-inline">
                   {expTips.map((tip) => <span key={tip.id} className="exp-tip">{tip.value}</span>)}
                 </span>
