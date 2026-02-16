@@ -51,6 +51,7 @@ export default function AdminNicknamePanel({ myLevel, token, myName }) {
         method: "POST",
         headers,
         body: JSON.stringify({
+          level: myLevel,
           nickname: nickname.trim(),
           reason: reason.trim(),
           executor: myName || "未知管理員", // 送執行者
@@ -151,6 +152,7 @@ export default function AdminNicknamePanel({ myLevel, token, myName }) {
                     <th>暱稱</th>
                     <th>原因</th>
                     <th>執行者</th>
+                    <th>時間</th> {/* 新增 */}
                     <th>操作</th>
                   </tr>
                 </thead>
@@ -164,13 +166,20 @@ export default function AdminNicknamePanel({ myLevel, token, myName }) {
                           <td>{row.reason || "-"}</td>
                           <td>{row.executor || "-"}</td>
                           <td>
+                            {row.created_at
+                              ? new Date(row.created_at).toLocaleString("zh-TW", {
+                                hour12: false,
+                              })
+                              : "-"}
+                          </td>
+                          <td>
                             <button onClick={() => unblock(row.id)}>解除</button>
                           </td>
                         </tr>
                       ))
                   ) : (
                     <tr>
-                      <td colSpan={4} style={{ textAlign: "center" }}>
+                      <td colSpan={5} style={{ textAlign: "center" }}>
                         無資料
                       </td>
                     </tr>

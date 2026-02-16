@@ -91,7 +91,7 @@ export default function MessageLogPanel({
   const handleOpen = () => {
     setOpen(true);
     setPage(1);
-    loadLogs(1);
+    //loadLogs(1);
   };
 
   const handlePage = (newPage) => {

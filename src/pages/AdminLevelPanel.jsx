@@ -12,7 +12,7 @@ export default function AdminLevelPanel({ token, myLevel, minLevel }) {
     const [totalCount, setTotalCount] = useState(0);
     const [keyword, setKeyword] = useState("");
 
-    const totalPages = Math.min(Math.ceil(totalCount / PAGE_SIZE), 10);
+    const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
     if (!token || myLevel < minLevel) return null;
 
@@ -119,25 +119,44 @@ export default function AdminLevelPanel({ token, myLevel, minLevel }) {
 
     /* ================= 分頁按鈕 ================= */
     const renderPageButtons = () => {
-        const maxButtons = 10;
-        let start = Math.max(1, page - Math.floor(maxButtons / 2));
-        let end = Math.min(totalPages, start + maxButtons - 1);
-        if (end - start < maxButtons - 1)
-            start = Math.max(1, end - maxButtons + 1);
+        const buttons = [];
+        const maxButtons = 7; // 中間最多顯示的按鈕數
+        if (totalPages <= maxButtons) {
+            // 總頁數小於等於 maxButtons，全部顯示
+            for (let p = 1; p <= totalPages; p++) {
+                buttons.push(
+                    <button key={p} className="admin-btn" disabled={p === page} onClick={() => loadUsers(p)}>
+                        {p}
+                    </button>
+                );
+            }
+        } else {
+            // 超過 maxButtons，前後顯示省略
+            buttons.push(
+                <button key={1} className="admin-btn" disabled={page === 1} onClick={() => loadUsers(1)}>1</button>
+            );
 
-        return Array.from({ length: end - start + 1 }, (_, i) => {
-            const p = start + i;
-            return (
-                <button
-                    key={p}
-                    className="admin-btn"
-                    disabled={p === page}
-                    onClick={() => loadUsers(p)}
-                >
-                    {p}
+            let start = Math.max(2, page - 2);
+            let end = Math.min(totalPages - 1, page + 2);
+
+            if (start > 2) buttons.push(<span key="start-ellipsis">...</span>);
+            for (let p = start; p <= end; p++) {
+                buttons.push(
+                    <button key={p} className="admin-btn" disabled={p === page} onClick={() => loadUsers(p)}>
+                        {p}
+                    </button>
+                );
+            }
+            if (end < totalPages - 1) buttons.push(<span key="end-ellipsis">...</span>);
+
+            buttons.push(
+                <button key={totalPages} className="admin-btn" disabled={page === totalPages} onClick={() => loadUsers(totalPages)}>
+                    {totalPages}
                 </button>
             );
-        });
+        }
+
+        return buttons;
     };
 
     return (

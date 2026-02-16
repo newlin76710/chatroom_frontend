@@ -500,29 +500,6 @@ export default function ChatApp() {
     setVideoUrl("");
   };
 
-  async function uploadSong(blob) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        try {
-          const base64 = reader.result.split(",")[1];
-          const res = await fetch(`${BACKEND}/song/upload`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ audioBase64: base64, singer: name }),
-          });
-          if (!res.ok) return reject("http error");
-          const data = await res.json();
-          resolve(data.url);
-        } catch (err) {
-          reject(err);
-        }
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  }
-
   // --- 監聽 forceLogout ---
   useEffect(() => {
     socket.on("forceLogout", ({ by }) => {
