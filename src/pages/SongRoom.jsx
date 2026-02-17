@@ -6,7 +6,7 @@ export default function SongRoom({ room, name, socket, currentSinger }) {
   const [lkRoom, setLkRoom] = useState(null);
   const [singing, setSinging] = useState(false);
   const [waiting, setWaiting] = useState(false);
-
+  const [myPosition, setMyPosition] = useState(0);
   const roomRef = useRef(null);
   const audioCtxRef = useRef(null);
   const destRef = useRef(null);
@@ -29,10 +29,14 @@ export default function SongRoom({ room, name, socket, currentSinger }) {
       setWaiting(false);
       grabMic();
     });
-
+    socket.on("micStateUpdate", (data) => {
+      const index = data.queue.indexOf(name);
+      setMyPosition(index + 1); // 排第幾個
+    });
     return () => {
       socket.off("forceStopSing");
       socket.off("yourTurn");
+      socket.off("micStateUpdate");
     };
   }, [socket, name]);
 
@@ -125,7 +129,7 @@ export default function SongRoom({ room, name, socket, currentSinger }) {
   return (
     <div style={{ padding: 12 }}>
       <button
-        onClick={singing ? stopSing : otherSinger? joinQueue : grabMic}
+        onClick={singing ? stopSing : otherSinger ? joinQueue : grabMic}
         disabled={waiting}
         style={{
           opacity: waiting ? 0.5 : 1,
@@ -136,10 +140,10 @@ export default function SongRoom({ room, name, socket, currentSinger }) {
         {singing
           ? "🛑 下麥"
           : waiting
-          ? "⏳ 排麥中..."
-          : currentSinger && currentSinger !== name
-          ? "🎶 排麥"
-          : "🎤 上麥"}
+            ? `⏳ 順位${myPosition}`
+            : currentSinger && currentSinger !== name
+              ? "🎶 排麥"
+              : "🎤 上麥"}
       </button>
     </div>
   );
