@@ -602,7 +602,7 @@ export default function ChatApp() {
                     <input style={{ width: 130 }} value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="貼上YouTube連結" />
                     <button onClick={playVideo}>🎵 點播</button>
                   </div>
-                  <SongRoom room={room} name={name} socket={socket} currentSinger={currentSinger} />
+                  <SongRoom room={room} name={name} socket={socket} currentSinger={currentSinger} myLevel={level}/>
                 </>
               ) : (
                 <>

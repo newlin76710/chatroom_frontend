@@ -1,0 +1,89 @@
+/* ===== 容器 ===== */
+.songroom-container {
+  padding: 12px;
+}
+
+/* ===== 上麥 / 下麥 / 排麥按鈕 ===== */
+.songroom-button {
+  opacity: 1;
+  cursor: pointer;
+  margin-right: 8px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: none;
+  background-color: #2563eb;
+  color: white;
+  font-size: 14px;
+}
+
+.songroom-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ===== 排麥列表面板 ===== */
+.queue-panel {
+  position: fixed;
+  top: 20px;
+  right: 330px;
+  width: 220px;
+  background: #1e1e1e;
+  color: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  font-size: 14px;
+  z-index: 999;
+}
+
+.queue-panel-header {
+  padding: 8px 12px;
+  background: #333;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.queue-panel-content {
+  padding: 10px;
+}
+
+/* ===== 正在唱 & 排隊項目 ===== */
+.queue-panel .queue-item {
+  color: #4ade80;
+  padding: 4px 6px;
+  border-radius: 6px;
+  margin-top: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.queue-panel .queue-item.me {
+  background: rgba(74, 222, 128, 0.2);
+  font-weight: bold;
+}
+
+/* ===== 踢人按鈕 ===== */
+.queue-panel .kick-button {
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 12px;
+  cursor: pointer;
+  margin-left: 6px;
+}
+
+/* ===== 響應式：手機 ===== */
+@media (max-width: 768px) {
+  .queue-panel {
+    top: auto;
+    bottom: 20px;
+    right: 20px;
+    width: 90%;
+    max-width: 320px;
+  }
+}
