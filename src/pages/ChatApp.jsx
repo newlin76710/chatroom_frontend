@@ -604,12 +604,6 @@ export default function ChatApp() {
                   </div>
                   <button
                     onClick={() => setShowSongPanel(!showSongPanel)}
-                    disabled={currentSinger && currentSinger !== name}
-                    title={currentSinger && currentSinger !== name ? "請等歌手下 Mic" : ""}
-                    style={{
-                      opacity: currentSinger && currentSinger !== name ? 0.5 : 1,
-                      cursor: currentSinger && currentSinger !== name ? "not-allowed" : "pointer",
-                    }}
                   >
                     🎤 唱歌
                   </button>

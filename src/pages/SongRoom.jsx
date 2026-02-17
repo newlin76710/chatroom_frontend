@@ -5,6 +5,7 @@ import { Room, LocalAudioTrack } from "livekit-client";
 export default function SongRoom({ room, name, socket, currentSinger }) {
   const [lkRoom, setLkRoom] = useState(null);
   const [singing, setSinging] = useState(false);
+  const [waiting, setWaiting] = useState(false);
 
   const roomRef = useRef(null);
   const audioCtxRef = useRef(null);
@@ -22,10 +23,18 @@ export default function SongRoom({ room, name, socket, currentSinger }) {
       stopSing();
     });
 
+    // ⭐ 後端通知輪到你
+    socket.on("yourTurn", () => {
+      console.log("[SongRoom] 輪到我上麥 🎯");
+      setWaiting(false);
+      grabMic();
+    });
+
     return () => {
       socket.off("forceStopSing");
+      socket.off("yourTurn");
     };
-  }, [socket]);
+  }, [socket, name]);
 
   const startSing = async (jwtToken) => {
     try {
@@ -104,6 +113,10 @@ export default function SongRoom({ room, name, socket, currentSinger }) {
       startSing(token);
     });
   };
+  const joinQueue = () => {
+    socket.emit("joinQueue", { room, name });
+    setWaiting(true);
+  };
 
   const otherSinger = currentSinger && currentSinger !== name;
   const grabDisabled = !singing && otherSinger;
@@ -112,16 +125,21 @@ export default function SongRoom({ room, name, socket, currentSinger }) {
   return (
     <div style={{ padding: 12 }}>
       <button
-        onClick={singing ? stopSing : grabMic}
-        disabled={grabDisabled}
-        title={grabTitle}
+        onClick={singing ? stopSing : otherSinger? joinQueue : grabMic}
+        disabled={waiting}
         style={{
-          opacity: grabDisabled ? 0.5 : 1,
-          cursor: grabDisabled ? "not-allowed" : "pointer",
+          opacity: waiting ? 0.5 : 1,
+          cursor: waiting ? "not-allowed" : "pointer",
           marginRight: 8
         }}
       >
-        {singing ? "🛑 下麥" : "🎤 上麥"}
+        {singing
+          ? "🛑 下麥"
+          : waiting
+          ? "⏳ 排麥中..."
+          : currentSinger && currentSinger !== name
+          ? "🎶 排麥"
+          : "🎤 上麥"}
       </button>
     </div>
   );
