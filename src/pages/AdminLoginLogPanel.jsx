@@ -2,51 +2,53 @@
 import { useState } from "react";
 import "./AdminLoginLogPanel.css";
 
-const BACKEND = import.meta.env.VITE_BACKEND_URL || "http://localhost:10000";
+const BACKEND =
+  import.meta.env.VITE_BACKEND_URL || "http://localhost:10000";
+const AML = import.meta.env.VITE_ADMIN_MAX_LEVEL || 99;
 const PAGE_SIZE = 20;
 
-/**
- * 將「台灣日期」轉成 UTC ISO 字串
- * @param {string} dateStr YYYY-MM-DD
- * @param {boolean} endOfDay 是否為當日結尾 23:59:59
- */
-const toUtcISOString = (dateStr, endOfDay = false) => {
-  if (!dateStr) return undefined;
+// local → UTC
+const toUtc = (localDatetime) => {
+  if (!localDatetime) return undefined;
 
-  // 台灣時間 UTC+8
-  const date = new Date(
-    `${dateStr}T${endOfDay ? "23:59:59" : "00:00:00"}+08:00`
-  );
+  const normalized =
+    localDatetime.length === 16
+      ? localDatetime + ":00"
+      : localDatetime;
 
-  return date.toISOString(); // 轉成 UTC
+  return new Date(normalized).toISOString();
 };
 
-export default function AdminLoginLogPanel({ myName, myLevel, minLevel, token }) {
+export default function AdminLoginLogPanel({
+  myName,
+  myLevel,
+  token,
+}) {
   const [logs, setLogs] = useState([]);
   const [open, setOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
-  // ⭐ 日期區間（台灣日期）
+  // ⭐ 改為 datetime-local
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
-  if (!token || myLevel < minLevel) return null;
+  if (!token || myLevel < AML) return null;
 
   const loadLogs = async (pageNum = 1) => {
-    if (!token) return;
-
     try {
       const body = {
         page: pageNum,
         pageSize: PAGE_SIZE,
       };
 
-      // ⭐ 台灣日期 → UTC
-      if (fromDate) body.from = toUtcISOString(fromDate);
-      if (toDate) body.to = toUtcISOString(toDate, true);
+      const fromUtc = toUtc(fromDate);
+      const toUtcDate = toUtc(toDate);
+
+      if (fromUtc) body.from = fromUtc;
+      if (toUtcDate) body.to = toUtcDate;
 
       const res = await fetch(`${BACKEND}/admin/login-logs`, {
         method: "POST",
@@ -57,13 +59,13 @@ export default function AdminLoginLogPanel({ myName, myLevel, minLevel, token })
         body: JSON.stringify(body),
       });
 
+      const data = await res.json();
+
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
         alert(data.error || "權限不足或查詢失敗");
         return;
       }
 
-      const data = await res.json();
       setLogs(data.logs || []);
       setPage(data.page || 1);
       setTotalCount(data.total || 0);
@@ -84,11 +86,6 @@ export default function AdminLoginLogPanel({ myName, myLevel, minLevel, token })
     loadLogs(newPage);
   };
 
-  const handleSearch = () => {
-    setPage(1);
-    loadLogs(1);
-  };
-
   const renderPageButtons = () => {
     const maxButtons = 10;
     let start = Math.max(1, page - Math.floor(maxButtons / 2));
@@ -103,7 +100,9 @@ export default function AdminLoginLogPanel({ myName, myLevel, minLevel, token })
         <button
           key={i}
           className="admin-btn"
-          style={{ backgroundColor: i === page ? "#1565c0" : "#1976d2" }}
+          style={{
+            backgroundColor: i === page ? "#1565c0" : "#1976d2",
+          }}
           onClick={() => handlePage(i)}
           disabled={i === page}
         >
@@ -122,31 +121,43 @@ export default function AdminLoginLogPanel({ myName, myLevel, minLevel, token })
 
       {open && (
         <div className="admin-overlay" onClick={() => setOpen(false)}>
-          <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="admin-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="admin-header">
               <h3>登入紀錄</h3>
               <button onClick={() => setOpen(false)}>✖</button>
             </div>
 
-            {/* ⭐ 日期篩選 */}
+            {/* ⭐ datetime-local 篩選 */}
             <div className="admin-filter-bar">
               <label>
                 起：
                 <input
-                  type="date"
+                  type="datetime-local"
                   value={fromDate}
-                  onChange={(e) => setFromDate(e.target.value)}
+                  onChange={(e) =>
+                    setFromDate(e.target.value)
+                  }
                 />
               </label>
+
               <label>
                 迄：
                 <input
-                  type="date"
+                  type="datetime-local"
                   value={toDate}
-                  onChange={(e) => setToDate(e.target.value)}
+                  onChange={(e) =>
+                    setToDate(e.target.value)
+                  }
                 />
               </label>
-              <button className="admin-btn" onClick={handleSearch}>
+
+              <button
+                className="admin-btn"
+                onClick={() => loadLogs(1)}
+              >
                 查詢
               </button>
             </div>
@@ -163,6 +174,7 @@ export default function AdminLoginLogPanel({ myName, myLevel, minLevel, token })
                     <th>時間（台灣）</th>
                   </tr>
                 </thead>
+
                 <tbody>
                   {logs.length > 0 ? (
                     logs.map((l) => (
@@ -173,7 +185,9 @@ export default function AdminLoginLogPanel({ myName, myLevel, minLevel, token })
                         <td>{l.success ? "✅" : "❌"}</td>
                         <td>{l.fail_reason || "-"}</td>
                         <td>
-                          {new Date(l.login_at).toLocaleString("zh-TW", {
+                          {new Date(
+                            l.login_at
+                          ).toLocaleString("zh-TW", {
                             hour12: false,
                           })}
                         </td>
@@ -181,7 +195,10 @@ export default function AdminLoginLogPanel({ myName, myLevel, minLevel, token })
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={6} style={{ textAlign: "center" }}>
+                      <td
+                        colSpan={6}
+                        style={{ textAlign: "center" }}
+                      >
                         無資料
                       </td>
                     </tr>
@@ -189,7 +206,6 @@ export default function AdminLoginLogPanel({ myName, myLevel, minLevel, token })
                 </tbody>
               </table>
 
-              {/* 分頁 */}
               <div className="admin-pagination">
                 <button
                   className="admin-btn"
@@ -198,7 +214,9 @@ export default function AdminLoginLogPanel({ myName, myLevel, minLevel, token })
                 >
                   上一頁
                 </button>
+
                 {renderPageButtons()}
+
                 <button
                   className="admin-btn"
                   onClick={() => handlePage(page + 1)}

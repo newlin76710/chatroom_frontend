@@ -97,7 +97,7 @@ export default function SongRoom({ room, name, socket, currentSinger, myLevel })
 
       <div className="queue-panel">
         <div className="queue-panel-header" onClick={() => setPanelOpen(!panelOpen)}>
-          <span>🎤 麥序列表</span>
+          <span>🎤 排麥列表</span>
           <span>{panelOpen ? "−" : "+"}</span>
         </div>
         {panelOpen && (
@@ -114,7 +114,7 @@ export default function SongRoom({ room, name, socket, currentSinger, myLevel })
             </div>
 
             <div>
-              <strong>排隊中：</strong>
+              <strong>排麥中：</strong>
               {queue.length === 0 ? <div style={{ opacity: 0.6 }}>目前沒有人排麥</div> :
                 queue.map((q, i) => (
                   <div key={i} className={`queue-item ${q === name ? "me" : ""}`}>

@@ -63,9 +63,14 @@
 }
 
 .admin-tool .admin-tabs button.active {
-  background: #fff;
+  background: #1976d2;
+  color: #fff;
   font-weight: 600;
   box-shadow: 0 1px 4px rgba(0,0,0,.15);
+}
+
+.admin-tool .admin-tabs button:hover:not(.active) {
+  background: #e3f2fd;
 }
 
 /* 小浮窗內容區 */
@@ -84,7 +89,7 @@
 .admin-modal .admin-btn,
 .admin-modal .admin-header button,
 .admin-modal .admin-pagination button,
-.admin-tool .admin-tabs button.active { /* 選中 tab 也變藍 */
+.admin-tool .admin-tabs button.active {
   margin-left: 6px;
   padding: 6px 10px;
   border-radius: 6px;
@@ -151,11 +156,49 @@
   font-weight: 600;
 }
 
+/* 篩選區 */
+.admin-modal .admin-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  border-bottom: 1px solid #eee;
+  background: #fafafa;
+  flex-wrap: wrap;
+}
+
+.admin-modal .admin-filter-bar label {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  color: #333;
+}
+
+/* 統一 date / datetime-local 樣式 */
+.admin-modal .admin-filter-bar input {
+  margin-left: 6px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 13px;
+  font-family: inherit;
+  color: #222;
+  background: #fff;
+  height: 32px;
+  outline: none;
+  transition: border 0.2s ease, box-shadow 0.2s ease;
+}
+
+.admin-modal .admin-filter-bar input:focus {
+  border-color: #1976d2;
+  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.15);
+}
+
 /* 表格容器 */
 .admin-modal .admin-table-wrapper {
   flex: 1;
   overflow: auto;
-  padding: 10px;
+  padding: 10px 14px;
 }
 
 /* 表格 */
@@ -163,6 +206,7 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
+  background: #fff;
 }
 
 .admin-modal .admin-table th,

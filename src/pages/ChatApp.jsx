@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
+import "./ChatApp.css";
 import MessageList from "./MessageList";
 import VideoPlayer from "./VideoPlayer";
 import VideoSafeBoundary from "./VideoSafeBoundary";
@@ -14,7 +15,7 @@ import AnnouncementPanel from "./AnnouncementPanel";
 import MessageBoard from "./MessageBoard";
 import MyMessageLogPanel from "./MyMessageLogPanel";
 import { aiAvatars } from "./aiConfig";
-import "./ChatApp.css";
+
 
 
 const BACKEND = import.meta.env.VITE_BACKEND_URL || "http://localhost:10000";
@@ -665,6 +666,7 @@ export default function ChatApp() {
                 myName={name}
                 myLevel={level}
                 token={token}
+                userList={userList}
               />
               <label><input type="radio" checked={chatMode === "public"} onChange={() => { setChatMode("public"); setTarget(""); }} /> 公開</label>
               <label><input type="radio" checked={chatMode === "publicTarget"} onChange={() => setChatMode("publicTarget")} /> 公開對象</label>

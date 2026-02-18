@@ -1,23 +1,24 @@
-/* Admin 按鈕（所有按鈕統一藍色） */
+/* ============================= */
+/* Admin 共用按鈕 */
+/* ============================= */
 .admin-btn,
 .admin-header button,
 .admin-pagination button {
-  margin-left: 6px;
-  padding: 6px 10px;
+  padding: 6px 12px;
   border-radius: 6px;
   border: none;
   cursor: pointer;
-  background-color: #1976d2; /* 藍色 */
-  color: #fff;               /* 白字 */
+  background-color: #1976d2;
+  color: #fff;
   font-size: 13px;
   font-weight: 500;
-  transition: background 0.2s;
+  transition: background 0.2s ease, opacity 0.2s ease;
 }
 
 .admin-btn:hover,
 .admin-header button:hover,
 .admin-pagination button:hover:not(:disabled) {
-  background-color: #1565c0; /* 深藍 hover */
+  background-color: #1565c0;
 }
 
 .admin-pagination button:disabled {
@@ -25,40 +26,46 @@
   cursor: default;
 }
 
+/* ============================= */
 /* 半透明遮罩 */
+/* ============================= */
 .admin-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.45);
   z-index: 1000;
   display: flex;
   justify-content: center;
   align-items: center;
 }
 
-/* 視窗本體 */
+/* ============================= */
+/* Modal 本體 */
+/* ============================= */
 .admin-modal {
-  background: #fff;
+  background: #ffffff;
   color: #222;
-  width: 90%;
-  max-width: 1000px;
-  max-height: 80%;
-  border-radius: 10px;
+  width: 92%;
+  max-width: 1100px;
+  max-height: 85%;
+  border-radius: 12px;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 10px 30px rgba(0,0,0,.25);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
   overflow: hidden;
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }
 
-/* header */
+/* ============================= */
+/* Header */
+/* ============================= */
 .admin-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 14px;
-  border-bottom: 1px solid #ddd;
-  background-color: #f5f5f5;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e0e0e0;
+  background-color: #f7f7f7;
 }
 
 .admin-header h3 {
@@ -67,23 +74,68 @@
   font-weight: 600;
 }
 
+/* ============================= */
+/* 篩選區 */
+/* ============================= */
+.admin-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 16px;
+  border-bottom: 1px solid #eee;
+  background: #fafafa;
+  flex-wrap: wrap;
+}
+
+.admin-filter-bar label {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  color: #333;
+}
+
+/* ⭐ 統一 date / datetime-local 樣式 */
+.admin-filter-bar input {
+  margin-left: 6px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 13px;
+  font-family: inherit;
+  color: #222;
+  background: #fff;
+  height: 32px;
+  outline: none;
+  transition: border 0.2s ease, box-shadow 0.2s ease;
+}
+
+.admin-filter-bar input:focus {
+  border-color: #1976d2;
+  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.15);
+}
+
+/* ============================= */
 /* 表格容器 */
+/* ============================= */
 .admin-table-wrapper {
   flex: 1;
   overflow: auto;
-  padding: 10px;
+  padding: 10px 16px;
 }
 
+/* ============================= */
 /* 表格 */
+/* ============================= */
 .admin-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
+  background: #fff;
 }
 
 .admin-table th,
 .admin-table td {
-  padding: 6px 8px;
+  padding: 8px 10px;
   border-bottom: 1px solid #eee;
   text-align: left;
   white-space: nowrap;
@@ -91,10 +143,10 @@
 }
 
 .admin-table th {
-  background: #f5f5f5;
+  background: #f3f3f3;
   position: sticky;
   top: 0;
-  z-index: 1;
+  z-index: 2;
   font-weight: 600;
 }
 
@@ -102,18 +154,23 @@
   background: #f0f7ff;
 }
 
-/* 分頁容器 */
+/* ============================= */
+/* 分頁 */
+/* ============================= */
 .admin-pagination {
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-top: 8px;
+  margin-top: 10px;
   gap: 6px;
+  padding-bottom: 10px;
 }
 
-/* 錯誤 / 提示訊息 */
+/* ============================= */
+/* 提示 / 錯誤 */
+/* ============================= */
 .admin-error {
   font-size: 12px;
-  color: red;
+  color: #d32f2f;
   margin-top: 4px;
 }

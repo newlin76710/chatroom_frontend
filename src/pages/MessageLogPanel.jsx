@@ -2,19 +2,18 @@
 import { useState } from "react";
 import "./MessageLogPanel.css";
 
-const BACKEND = import.meta.env.VITE_BACKEND_URL || "http://localhost:10000";
+const BACKEND =
+  import.meta.env.VITE_BACKEND_URL || "http://localhost:10000";
+const AML = import.meta.env.VITE_ADMIN_MAX_LEVEL || 99;
 const PAGE_SIZE = 20;
 
-/**
- * local datetime → UTC ISO
- * 自動補秒
- */
+// local → UTC
 const toUtc = (localDatetime) => {
   if (!localDatetime) return undefined;
 
   const normalized =
     localDatetime.length === 16
-      ? localDatetime + ":00" // 補秒
+      ? localDatetime + ":00"
       : localDatetime;
 
   return new Date(normalized).toISOString();
@@ -23,7 +22,6 @@ const toUtc = (localDatetime) => {
 export default function MessageLogPanel({
   myName,
   myLevel,
-  minLevel,
   token,
   userList = [],
 }) {
@@ -36,13 +34,12 @@ export default function MessageLogPanel({
   const [searchKeyword, setSearchKeyword] = useState("");
   const [searchTarget, setSearchTarget] = useState("");
 
-  // ⭐ datetime-local
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
-  if (!token || myLevel < minLevel) return null;
+  if (!token || myLevel < AML) return null;
 
   const loadLogs = async (pageNum = 1) => {
     try {
@@ -51,7 +48,6 @@ export default function MessageLogPanel({
         pageSize: PAGE_SIZE,
       };
 
-      // ⭐ 動態加入條件（避免 undefined）
       if (searchUsername) body.username = searchUsername;
       if (searchTarget) body.target = searchTarget;
       if (searchKeyword) body.keyword = searchKeyword;
@@ -71,13 +67,12 @@ export default function MessageLogPanel({
         body: JSON.stringify(body),
       });
 
+      const data = await res.json();
+
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
         alert(data.error || "查詢失敗");
         return;
       }
-
-      const data = await res.json();
 
       setLogs(data.logs || []);
       setPage(data.page || 1);
@@ -91,7 +86,7 @@ export default function MessageLogPanel({
   const handleOpen = () => {
     setOpen(true);
     setPage(1);
-    //loadLogs(1);
+    //loadLogs(1); // 打開時直接查詢
   };
 
   const handlePage = (newPage) => {
@@ -99,13 +94,9 @@ export default function MessageLogPanel({
     loadLogs(newPage);
   };
 
-  const handleSearch = () => {
-    setPage(1);
-    loadLogs(1);
-  };
-
   const renderPageButtons = () => {
     const maxButtons = 10;
+
     let start = Math.max(1, page - Math.floor(maxButtons / 2));
     let end = Math.min(totalPages, start + maxButtons - 1);
 
@@ -113,12 +104,15 @@ export default function MessageLogPanel({
       start = Math.max(1, end - maxButtons + 1);
 
     const buttons = [];
+
     for (let i = start; i <= end; i++) {
       buttons.push(
         <button
           key={i}
           className="admin-btn"
-          style={{ backgroundColor: i === page ? "#1565c0" : "#1976d2" }}
+          style={{
+            backgroundColor: i === page ? "#1565c0" : "#1976d2",
+          }}
           onClick={() => handlePage(i)}
           disabled={i === page}
         >
@@ -126,6 +120,7 @@ export default function MessageLogPanel({
         </button>
       );
     }
+
     return buttons;
   };
 
@@ -137,7 +132,10 @@ export default function MessageLogPanel({
 
       {open && (
         <div className="admin-overlay" onClick={() => setOpen(false)}>
-          <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="admin-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="admin-header">
               <h3>發言紀錄</h3>
               <button onClick={() => setOpen(false)}>✖</button>
@@ -149,12 +147,16 @@ export default function MessageLogPanel({
                 type="text"
                 placeholder="使用者"
                 value={searchUsername}
-                onChange={(e) => setSearchUsername(e.target.value)}
+                onChange={(e) =>
+                  setSearchUsername(e.target.value)
+                }
               />
 
               <select
                 value={searchTarget}
-                onChange={(e) => setSearchTarget(e.target.value)}
+                onChange={(e) =>
+                  setSearchTarget(e.target.value)
+                }
               >
                 <option value="">全部對象</option>
                 {userList
@@ -171,23 +173,32 @@ export default function MessageLogPanel({
                 className="keyword"
                 placeholder="關鍵字"
                 value={searchKeyword}
-                onChange={(e) => setSearchKeyword(e.target.value)}
+                onChange={(e) =>
+                  setSearchKeyword(e.target.value)
+                }
               />
 
-              {/* ⭐ datetime-local */}
+              {/* datetime-local */}
               <input
                 type="datetime-local"
                 value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
+                onChange={(e) =>
+                  setFromDate(e.target.value)
+                }
               />
 
               <input
                 type="datetime-local"
                 value={toDate}
-                onChange={(e) => setToDate(e.target.value)}
+                onChange={(e) =>
+                  setToDate(e.target.value)
+                }
               />
 
-              <button className="admin-btn" onClick={handleSearch}>
+              <button
+                className="admin-btn"
+                onClick={() => loadLogs(1)}
+              >
                 搜尋
               </button>
             </div>
@@ -222,13 +233,17 @@ export default function MessageLogPanel({
                         </td>
 
                         <td>
-                          {l.mode === "private" ? "私聊" : "公開"}
+                          {l.mode === "private"
+                            ? "私聊"
+                            : "公開"}
                         </td>
 
                         <td>{l.ip || "-"}</td>
 
                         <td>
-                          {new Date(l.created_at).toLocaleString("zh-TW", {
+                          {new Date(
+                            l.created_at
+                          ).toLocaleString("zh-TW", {
                             hour12: false,
                           })}
                         </td>
@@ -236,7 +251,10 @@ export default function MessageLogPanel({
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={6} style={{ textAlign: "center" }}>
+                      <td
+                        colSpan={6}
+                        style={{ textAlign: "center" }}
+                      >
                         無資料
                       </td>
                     </tr>
@@ -244,7 +262,6 @@ export default function MessageLogPanel({
                 </tbody>
               </table>
 
-              {/* 分頁 */}
               <div className="admin-pagination">
                 <button
                   className="admin-btn"
