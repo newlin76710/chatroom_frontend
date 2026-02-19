@@ -10,6 +10,7 @@ export default function MessageBoard({ token, myName, myLevel, open, onClose }) 
     const [content, setContent] = useState("");
     const [isPrivate, setIsPrivate] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [replyText, setReplyText] = useState({}); // 管理員回覆文字
 
     const isAdmin = myLevel >= AML;
 
@@ -83,6 +84,30 @@ export default function MessageBoard({ token, myName, myLevel, open, onClose }) 
         }
     };
 
+    /* ===== 回覆留言（管理員專用） ===== */
+    const submitReply = async (id) => {
+        const reply = replyText[id]?.trim();
+        if (!reply) return;
+
+        try {
+            const res = await fetch(`${BACKEND}/api/message-board/reply`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ id, reply }),
+            });
+            const data = await res.json();
+            if (!res.ok || !data.success) throw new Error(data.error || "回覆失敗");
+
+            setReplyText(prev => ({ ...prev, [id]: "" }));
+            loadMessages();
+        } catch (err) {
+            alert(err.message);
+        }
+    };
+
     if (!open) return null;
 
     return (
@@ -115,29 +140,37 @@ export default function MessageBoard({ token, myName, myLevel, open, onClose }) 
 
                 <div className="message-list">
                     {messages
-                        .slice() // 複製陣列避免改變 state
-                        .reverse() // 最新在最上面
+                        .slice()
+                        .reverse()
                         .map((m) => {
-                            const isPrivate = m.is_private;
+                            const isPrivateMsg = m.is_private;
                             const isAuthor = m.author_name === myName;
                             const canDelete = isAdmin || isAuthor;
 
                             let contentDisplay;
-                            if (isPrivate) {
-                                if (isAuthor) {
-                                    contentDisplay = `這是給版主的悄悄話\n${m.content}`; // 留言者本人看到完整內容
-                                } else if (isAdmin) {
-                                    contentDisplay = `這是給版主的悄悄話\n${m.content}`; // 版主看到標記與內容
+                            if (isPrivateMsg) {
+                                if (isAuthor || isAdmin) {
+                                    contentDisplay = `這是給版主的悄悄話\n${m.content}`;
                                 } else {
-                                    contentDisplay = "這是給版主的悄悄話"; // 其他人只看到標記
+                                    contentDisplay = "這是給版主的悄悄話";
                                 }
                             } else {
-                                contentDisplay = m.content; // 公開留言
+                                contentDisplay = m.content;
                             }
 
                             return (
-                                <div key={m.id} className={`message-item ${isPrivate ? "private" : ""}`}>
+                                <div key={m.id} className={`message-item ${isPrivateMsg ? "private" : ""}`}>
                                     <div className="message-content">{contentDisplay}</div>
+
+                                    {/* 回覆內容 */}
+                                    {m.reply_content && (
+                                        ((isPrivateMsg && (isAuthor || isAdmin)) || !isPrivateMsg) && (
+                                            <div className="message-reply">
+                                                <b>管理員回覆:</b> {m.reply_content}
+                                            </div>
+                                        )
+                                    )}
+
                                     <div className="message-meta">
                                         <span className="username">{m.author_name}</span>
                                         <span className="timestamp">{new Date(m.created_at).toLocaleString()}</span>
@@ -147,6 +180,19 @@ export default function MessageBoard({ token, myName, myLevel, open, onClose }) 
                                             </button>
                                         )}
                                     </div>
+
+                                    {/* 管理員回覆輸入框 */}
+                                    {isAdmin && !m.reply_content && (
+                                        <div className="message-reply-input">
+                                            <input
+                                                type="text"
+                                                placeholder="輸入回覆..."
+                                                value={replyText[m.id] || ""}
+                                                onChange={(e) => setReplyText(prev => ({ ...prev, [m.id]: e.target.value }))}
+                                            />
+                                            <button onClick={() => submitReply(m.id)}>回覆</button>
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })}
