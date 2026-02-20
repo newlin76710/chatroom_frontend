@@ -6,10 +6,20 @@ export default function Listener({ room, name, socket, onSingerChange }) {
   const [lkRoom, setLkRoom] = useState(null);
   const [listening, setListening] = useState(false);
   const [currentSinger, setCurrentSinger] = useState(null);
+  const [nextSinger, setNextSinger] = useState(null);
+  const [score, setScore] = useState(0);
+  const [ratedSinger, setRatedSinger] = useState(null);
+  const [averageScore, setAverageScore] = useState(null);
+  const [scoreCount, setScoreCount] = useState(0);
 
   const togglingRef = useRef(false); // ⭐ 防止連續 toggle
   const audioElementsRef = useRef({});
   const audioTracksRef = useRef({});
+
+  useEffect(() => {
+    setScore(0);
+    setRatedSinger(null);
+  }, [currentSinger]);
 
   /* ===== Socket：目前演唱者 ===== */
   useEffect(() => {
@@ -17,6 +27,8 @@ export default function Listener({ room, name, socket, onSingerChange }) {
 
     const handler = (data) => {
       const singer = data.currentSinger || null;
+      const queue = data.queue || [];
+      setNextSinger(queue.length > 0 ? queue[0] : null);
       setCurrentSinger(singer);
       onSingerChange?.(singer);
     };
@@ -24,6 +36,33 @@ export default function Listener({ room, name, socket, onSingerChange }) {
     socket.on("micStateUpdate", handler);
     return () => socket.off("micStateUpdate", handler);
   }, [socket]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handler = (data) => {
+      if (data.singer === currentSinger) {
+        setAverageScore(data.average);
+        setScoreCount(data.count);
+      }
+    };
+
+    socket.on("scoreUpdate", handler);
+    return () => socket.off("scoreUpdate", handler);
+  }, [socket, currentSinger]);
+
+  const submitScore = (value) => {
+    if (!currentSinger || ratedSinger === currentSinger) return;
+
+    socket.emit("rateSinger", {
+      room,
+      singer: currentSinger,
+      score: value
+    });
+
+    setScore(value);
+    setRatedSinger(currentSinger);
+  };
 
   /* ===== 清 audio ===== */
   const clearAllAudio = () => {
@@ -41,7 +80,7 @@ export default function Listener({ room, name, socket, onSingerChange }) {
     try {
       lkRoom.removeAllListeners();
       lkRoom.disconnect();
-    } catch {}
+    } catch { }
 
     clearAllAudio();
     audioTracksRef.current = {};
@@ -120,12 +159,36 @@ export default function Listener({ room, name, socket, onSingerChange }) {
   return (
     <div className="listener-bar">
       <span className="current-singer">
-        🎤 目前演唱者：{currentSinger || "無人唱歌"}
+        🎤 演唱者：{currentSinger || "無"} 
       </span>
-
+      <span className="next-singer">
+        ⏭ 下一位：{nextSinger || "無"}
+      </span>
       <button className="listen-btn" onClick={toggleListening}>
-        {listening ? "🛑 停止收聽" : "🎧 開始收聽"}
+        {listening ? "🛑 停止聽" : "🎧 開始聽"}
       </button>
+
+      {/* {currentSinger && (
+        <div className="rating-panel">
+          <span>評分：</span>
+          {[1, 2, 3, 4, 5].map((s) => (
+            <span
+              key={s}
+              className={`star ${score >= s ? "active" : ""}`}
+              onClick={() => submitScore(s)}
+            >
+              ★
+            </span>
+          ))}
+        </div>
+      )}
+
+      {averageScore && (
+        <div className="score-display">
+          🎵 平均：{averageScore}分/{scoreCount}人
+        </div>
+      )} */}
+
     </div>
   );
 }

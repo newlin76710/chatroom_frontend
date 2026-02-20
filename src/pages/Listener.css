@@ -2,15 +2,20 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 1px;
 
-  padding: 8px 12px;
+  padding: 1px 1px;
   background: rgba(0, 0, 0, 0.6);
   color: white;
-  border-radius: 8px;
+  border-radius: 1px;
 }
 
 .current-singer {
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.next-singer {
   font-size: 14px;
   white-space: nowrap;
 }
@@ -21,4 +26,20 @@
   border-radius: 6px;
   border: none;
   cursor: pointer;
+}
+
+.rating-panel {
+  margin-top: 0px;
+}
+
+.star {
+  cursor: pointer;
+  font-size: 16px;
+  color: #888;
+  margin: 0 3px;
+  transition: 0.2s;
+}
+
+.star.active {
+  color: gold;
 }

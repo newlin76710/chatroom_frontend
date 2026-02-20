@@ -99,7 +99,12 @@ export default function UserList({
               {setFilteredUsers && (
                 <button
                   className="filter-btn"
-                  style={{ marginLeft: "4px", fontSize: "0.7rem" }}
+                  style={{
+                    marginLeft: "1px", fontSize: "0.7rem",
+                    backgroundColor: "#1976d2",
+                    color: "white",
+                    borderColor: "#1976d2"
+                  }}
                   onClick={(e) => {
                     e.stopPropagation();
                     toggleFilter(u.name);
@@ -107,10 +112,11 @@ export default function UserList({
                 >
                   {isFiltered ? "解除" : "過濾"}
                 </button>
-              )}
+              )
+              }
             </div>
           );
         })}
-    </div>
+    </div >
   );
 }
