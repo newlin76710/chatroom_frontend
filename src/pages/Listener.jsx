@@ -159,10 +159,10 @@ export default function Listener({ room, name, socket, onSingerChange }) {
   return (
     <div className="listener-bar">
       <span className="current-singer">
-        🎤 演唱者：{currentSinger || "無"} 
+        🎤 演唱者：{currentSinger || "無"} &nbsp;
       </span>
       <span className="next-singer">
-        ⏭ 下一位：{nextSinger || "無"}
+        ⏭ 下一位：{nextSinger || "無"} &nbsp;
       </span>
       <button className="listen-btn" onClick={toggleListening}>
         {listening ? "🛑 停止聽" : "🎧 開始聽"}

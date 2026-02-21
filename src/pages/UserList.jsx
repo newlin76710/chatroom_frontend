@@ -88,6 +88,8 @@ export default function UserList({
                   className="kick-btn"
                   onClick={(e) => {
                     e.stopPropagation();
+                    const ok = window.confirm(`確定要踢出「${u.name}」嗎？`);
+                    if (!ok) return;
                     kickUser(u.name);
                   }}
                 >

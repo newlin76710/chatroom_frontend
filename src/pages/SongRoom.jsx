@@ -110,7 +110,7 @@ export default function SongRoom({ room, name, socket, currentSinger, myLevel })
                   {myLevel >= AML && <button className="kick-button" onClick={() => forceStopSinger(currentSinger)}>踢下麥</button>}
                 </div>
               )}
-              {!currentSinger && <div className="queue-item">無</div>}
+              {!currentSinger && <div className="queue-item">無 </div>}
             </div>
 
             <div>
