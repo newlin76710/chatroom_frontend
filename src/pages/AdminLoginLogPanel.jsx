@@ -185,11 +185,7 @@ export default function AdminLoginLogPanel({
                         <td>{l.success ? "✅" : "❌"}</td>
                         <td>{l.fail_reason || "-"}</td>
                         <td>
-                          {new Date(
-                            l.login_at
-                          ).toLocaleString("zh-TW", {
-                            hour12: false,
-                          })}
+                          {new Date(l.login_at).toLocaleString("zh-TW", {hour12: false,})}
                         </td>
                       </tr>
                     ))

@@ -241,11 +241,7 @@ export default function MessageLogPanel({
                         <td>{l.ip || "-"}</td>
 
                         <td>
-                          {new Date(
-                            l.created_at
-                          ).toLocaleString("zh-TW", {
-                            hour12: false,
-                          })}
+                          {new Date(l.created_at).toLocaleString("zh-TW", {hour12: false,})}
                         </td>
                       </tr>
                     ))
