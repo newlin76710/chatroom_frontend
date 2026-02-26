@@ -28,6 +28,11 @@
   cursor: pointer;
 }
 
+.listen-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .rating-panel {
   margin-top: 0px;
 }

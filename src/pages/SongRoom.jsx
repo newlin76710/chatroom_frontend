@@ -11,6 +11,7 @@ export default function SongRoom({ room, name, socket, currentSinger, myLevel })
   const [myPosition, setMyPosition] = useState(0);
   const [queue, setQueue] = useState([]);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const roomRef = useRef(null);
   const audioCtxRef = useRef(null);
@@ -60,6 +61,8 @@ export default function SongRoom({ room, name, socket, currentSinger, myLevel })
   };
 
   const stopSing = async () => {
+    if (isProcessing) return;
+    setIsProcessing(true);
     const lk = roomRef.current;
     await lk?.localParticipant.setMicrophoneEnabled(false);
     if (micTrackRef.current) await lk?.localParticipant.unpublishTrack(micTrackRef.current);
@@ -79,9 +82,21 @@ export default function SongRoom({ room, name, socket, currentSinger, myLevel })
     destRef.current = null;
     setSinging(false);
     socket.emit("stopSing", { room, singer: name });
+    setIsProcessing(false);
   };
 
-  const grabMic = () => { socket.emit("grabMic", { room, singer: name }); socket.once("livekit-token", ({ token }) => startSing(token)); };
+  const grabMic = () => {
+    if (isProcessing || singing) return;
+
+    setIsProcessing(true);
+
+    socket.emit("grabMic", { room, singer: name });
+    socket.off("livekit-token");
+    socket.once("livekit-token", async ({ token }) => {
+      await startSing(token);
+      setIsProcessing(false);
+    });
+  };
   const joinQueue = () => { socket.emit("joinQueue", { room, name }); setWaiting(true); };
   const leaveQueue = () => { socket.emit("leaveQueue", { room, name }); setWaiting(false); };
   const forceStopSinger = (singerName) => { socket.emit("forceStopSinger", { room, singer: singerName }); };
@@ -90,9 +105,9 @@ export default function SongRoom({ room, name, socket, currentSinger, myLevel })
 
   return (
     <div className="songroom-container">
-      <button className="songroom-button"
+      <button className="songroom-button" disabled={isProcessing}
         onClick={singing ? stopSing : waiting ? leaveQueue : otherSinger ? joinQueue : grabMic}>
-        {singing ? "🛑 下麥" : waiting ? `⏳ 取消排麥` : otherSinger ? "🎶 排麥" : "🎤 上麥"}
+        {isProcessing ? "⏳ 處理中" : singing ? "🛑 下麥" : waiting ? `🎤 取消排麥` : otherSinger ? "🎶 排麥" : "🎤 上麥"}
       </button>
 
       <div className="queue-panel">

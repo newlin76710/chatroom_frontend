@@ -11,10 +11,54 @@ export default function Listener({ room, name, socket, onSingerChange }) {
   const [ratedSinger, setRatedSinger] = useState(null);
   const [averageScore, setAverageScore] = useState(null);
   const [scoreCount, setScoreCount] = useState(0);
-
   const togglingRef = useRef(false); // ⭐ 防止連續 toggle
   const audioElementsRef = useRef({});
   const audioTracksRef = useRef({});
+  const wasListeningBeforeSingRef = useRef(false);
+  const [isSinging, setIsSinging] = useState(false);
+
+  useEffect(() => {
+    if (isSinging) {
+      console.log("🎤 I start singing");
+      wasListeningBeforeSingRef.current = listening;
+      if (listening) {
+        stopListening();
+      }
+    } else {
+      console.log("🛑 I stop singing");
+      if (wasListeningBeforeSingRef.current) {
+        startListening();
+        wasListeningBeforeSingRef.current = false;
+      }
+    }
+  }, [isSinging]);
+
+  useEffect(() => {
+    if (!currentSinger) { setIsSinging(false); return; }
+    if (togglingRef.current) return;
+
+    // ===== 1️⃣ 輪到自己 =====
+    if (currentSinger === name) {
+      setIsSinging(true)
+      return;
+    }
+
+    // ===== 2️⃣ 自己剛下麥 =====
+    if (currentSinger !== name) {
+      setIsSinging(false)
+    }
+
+    // ===== 3️⃣ 其他人換人（保持原本 toggle 兩次邏輯）=====
+    if (listening) {
+      (async () => {
+        togglingRef.current = true;
+        await stopListening();
+        await startListening();
+        togglingRef.current = false;
+      })();
+    }
+
+  }, [currentSinger]);
 
   useEffect(() => {
     setScore(0);
@@ -143,19 +187,6 @@ export default function Listener({ room, name, socket, onSingerChange }) {
     }
   };
 
-  /* ===== ⭐ singer 換人 → 自動 toggle 兩次 ===== */
-  useEffect(() => {
-    if (!listening || !currentSinger) return;
-    if (togglingRef.current) return;
-
-    (async () => {
-      togglingRef.current = true;
-      await stopListening();
-      await startListening();
-      togglingRef.current = false;
-    })();
-  }, [currentSinger]);
-
   return (
     <div className="listener-bar">
       <span className="current-singer">
@@ -164,7 +195,7 @@ export default function Listener({ room, name, socket, onSingerChange }) {
       <span className="next-singer">
         ⏭ 下一位：{nextSinger || "無"} &nbsp;
       </span>
-      <button className="listen-btn" onClick={toggleListening}>
+      <button className="listen-btn" disabled={isSinging} onClick={toggleListening}>
         {listening ? "🛑 停止聽" : "🎧 開始聽"}
       </button>
 

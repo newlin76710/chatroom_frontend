@@ -132,7 +132,7 @@ export default function QuickPhrasePanel({ token, onSelect }) {
             </div>
           ))}
 
-          {phrases.length < 10 && !editingId && (
+          {phrases.length < 20 && !editingId && (
             <button
               style={{ fontSize: "0.7rem", marginBottom: "4px" }}
               onClick={() => setEditingId("new")}

@@ -102,11 +102,14 @@ export default function MessageList({
             (m.mode === "publicTarget" &&
               (m.user?.name === name || m.target === name)) ||
             (isSystem && messageText?.includes(name));
-
+            
+          const enteringUserMatch = isSystem
+            ? messageText.match(/^(.+) 進入聊天室$/)
+            : null;
+          const enteringUser = enteringUserMatch ? enteringUserMatch[1] : null;
           let color = "#eee";
           if (m.color) color = m.color;
-          else if (isSystem && messageText?.includes("進入聊天室"))
-            color = "#ff9900";
+          else if (isSystem && enteringUser) color = getUserColor(enteringUser);
           else if (isSystem) color = "#BBECE2";
           else if (isSelf) color = "#fff";
 
@@ -114,10 +117,7 @@ export default function MessageList({
 
           const tag = m.mode === "private" ? "(私聊)" : "";
 
-          const enteringUserMatch = isSystem
-            ? messageText.match(/^(.+) 進入聊天室$/)
-            : null;
-          const enteringUser = enteringUserMatch ? enteringUserMatch[1] : null;
+          
 
           return (
             <div
