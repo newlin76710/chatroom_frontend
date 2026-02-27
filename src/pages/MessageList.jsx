@@ -25,14 +25,10 @@ export default function MessageList({
   userList = [],
 }) {
   const AML = import.meta.env.VITE_ADMIN_MAX_LEVEL || 99;
-
   const containerRef = useRef(null);
 
   /* ===============================
      ⭐ 核心滾動（穩定版）
-     - useLayoutEffect 防止畫面跳動
-     - requestAnimationFrame 等 DOM 長完
-     - 距離底部判斷
   =============================== */
   useLayoutEffect(() => {
     const el = containerRef.current;
@@ -47,13 +43,11 @@ export default function MessageList({
     const NEAR_BOTTOM = 120;
 
     requestAnimationFrame(() => {
-      // 自己發言 → 永遠到底
       if (isSelf) {
         el.scrollTop = el.scrollHeight;
         return;
       }
 
-      // 別人 → 接近底部才滾
       if (distanceFromBottom < NEAR_BOTTOM) {
         el.scrollTop = el.scrollHeight;
       }
@@ -70,8 +64,8 @@ export default function MessageList({
     if (!userName) return "#00aa00";
     const user = userList.find((u) => u.name === userName);
     if (!user) return "#00aa00";
-    if (user.gender === "男") return "#A7C7E7";
-    if (user.gender === "女") return "#F8C8DC";
+    if (user.gender === "男") return "#A7C7E7"; // 淺藍
+    if (user.gender === "女") return "#F8C8DC"; // 淺粉紅
     return "#00aa00";
   };
 
@@ -102,22 +96,22 @@ export default function MessageList({
             (m.mode === "publicTarget" &&
               (m.user?.name === name || m.target === name)) ||
             (isSystem && messageText?.includes(name));
-            
+
+          // 系統進入聊天室匹配
           const enteringUserMatch = isSystem
             ? messageText.match(/^(.+) 進入聊天室$/)
             : null;
           const enteringUser = enteringUserMatch ? enteringUserMatch[1] : null;
+
+          // 預設顏色
           let color = "#eee";
           if (m.color) color = m.color;
-          else if (isSystem && enteringUser) color = getUserColor(enteringUser);
-          else if (isSystem) color = "#BBECE2";
+          else if (isSystem && enteringUser) color = "#ff9900";
+          else if (isSystem) color = "#BBECE2"; // 其他系統訊息
           else if (isSelf) color = "#fff";
 
           const bgColor = isRelatedToMe ? "#004477" : "transparent";
-
           const tag = m.mode === "private" ? "(私聊)" : "";
-
-          
 
           return (
             <div
@@ -167,34 +161,34 @@ export default function MessageList({
                   </span>
                 )}
 
-                <span
-                  style={{
-                    fontWeight: "bold",
-                    cursor: isSystem ? "default" : "pointer",
-                    color: isSystem ? color : getUserColor(userName),
-                  }}
-                  onClick={() => !isSystem && handleSelectUser(userName)}
-                >
-                  {userName}
-                </span>
-
                 {enteringUser ? (
                   <>
-                    ：
+                    <span>系統：</span>
                     <span
                       style={{
                         fontWeight: "bold",
                         cursor: "pointer",
-                        color,
+                        color: getUserColor(enteringUser),
                       }}
                       onClick={() => handleSelectUser(enteringUser)}
                     >
                       {enteringUser}
                     </span>
-                    <span> 進入聊天室</span>
+                    <span style={{ color: "#ff9900" }}> 進入聊天室</span>
                   </>
                 ) : (
                   <>
+                    <span
+                      style={{
+                        fontWeight: "bold",
+                        cursor: isSystem ? "default" : "pointer",
+                        color: isSystem ? color : getUserColor(userName),
+                      }}
+                      onClick={() => !isSystem && handleSelectUser(userName)}
+                    >
+                      {userName}
+                    </span>
+
                     {targetName && (
                       <>
                         <span> → </span>

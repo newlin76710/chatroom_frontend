@@ -45,7 +45,7 @@ export default function UserList({
         className="user-list-header"
         onClick={() => setUserListCollapsed(!userListCollapsed)}
       >
-        在線：{visibleUsers.length}
+        在線：{visibleUsers.length} 人
       </div>
 
       {!userListCollapsed &&
