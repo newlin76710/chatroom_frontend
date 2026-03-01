@@ -92,26 +92,32 @@ export default function ChatApp() {
   const [currentSinger, setCurrentSinger] = useState(null);
   const pendingLeaves = useRef(new Map());
   const initializedRef = useRef(false);
+  const [token, setToken] = useState("");
 
-  // --- 初始化 sessionStorage ---
   useEffect(() => {
+    // 讀取 sessionStorage
     const storedName = sessionStorage.getItem("name");
     const storedLevel = parseInt(sessionStorage.getItem("level")) || 1;
     const storedExp = parseInt(sessionStorage.getItem("exp")) || 0;
     const storedGender = sessionStorage.getItem("gender") || "女";
+    const storedToken = sessionStorage.getItem("token") || sessionStorage.getItem("guestToken") || null;
+    const type = sessionStorage.getItem("type") || "guest";
 
+    // 沒有 token 或非會員/訪客狀態不對 → 直接回 login
+    if (!storedToken) {
+      sessionStorage.clear();
+      socket.disconnect();
+      window.location.href = "/login";
+      return; // 停止執行下面初始化
+    }
+
+    // 初始化 state
     if (storedName) setName(safeText(storedName));
     setLevel(storedLevel);
     setExp(storedExp);
     setGender(storedGender);
-  }, []);
-
-  const [token, setToken] = useState("");
-  // 初始化 token
-  useEffect(() => {
-    const storedToken = sessionStorage.getItem("token") || sessionStorage.getItem("guestToken") || null;
-    if (storedToken) setToken(storedToken);
-  }, []);
+    setToken(storedToken);
+  }, []); // 只跑一次
 
   useEffect(() => {
     // 心跳 10 秒一次
@@ -358,6 +364,21 @@ export default function ChatApp() {
     };
   }, [socket, userList]); // ⚠ 一定要有 userList
 
+  useEffect(() => {
+    const handleJoinFail = ({ reason }) => {
+      alert(`⚠️ 加入房間失敗: ${reason}`);
+      // 清掉 session 並導回登入頁
+      sessionStorage.clear();
+      socket.disconnect();
+      window.location.href = "/login";
+    };
+
+    socket.on("joinFailed", handleJoinFail);
+
+    return () => {
+      socket.off("joinFailed", handleJoinFail);
+    };
+  }, [socket]);
 
   // --- 自動 joinRoom 帶 token ---
   useEffect(() => {
@@ -368,39 +389,6 @@ export default function ChatApp() {
     socket.emit("joinRoom", { room, user: { name, type, token } });
     setJoined(true);
   }, [room, socket, joined, name]);
-
-  // --- 訪客登入 ---
-  const loginGuest = async () => {
-    try {
-      sessionStorage.clear();
-      const guestName = `訪客${Math.floor(Math.random() * 9999)}`;
-
-      const res = await fetch(`${BACKEND}/auth/guest`, { method: "POST" });
-      const data = await res.json();
-      const safeName = safeText(data.name || guestName);
-
-      sessionStorage.setItem("guestToken", data.guestToken);
-      sessionStorage.setItem("token", data.guestToken);
-      sessionStorage.setItem("name", safeName);
-      sessionStorage.setItem("type", "guest");
-      sessionStorage.setItem("level", data.level || 1);
-      sessionStorage.setItem("exp", data.exp || 0);
-      sessionStorage.setItem("gender", data.gender || "女");
-
-      setName(safeName);
-      setLevel(data.level || 1);
-      setExp(data.exp || 0);
-      setGender(data.gender || "女");
-
-      socket.emit("joinRoom", {
-        room,
-        user: { name: safeName, type: "guest", token: data.guestToken },
-      });
-      setJoined(true);
-    } catch (err) {
-      alert("訪客登入失敗：" + err.message);
-    }
-  };
 
   // --- 離開房間 / 斷線 ---
   const leaveRoom = async () => {
@@ -575,9 +563,7 @@ export default function ChatApp() {
           open={showMessageBoard}
           onClose={() => setShowMessageBoard(false)}
         />
-        {!joined ? (
-          <button onClick={loginGuest}>訪客登入</button>
-        ) : (
+        {joined && (
           <>
             <div className="chat-toolbar">
               <span>
@@ -603,7 +589,7 @@ export default function ChatApp() {
                     <input style={{ width: 130 }} value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="貼上YouTube連結" />
                     <button onClick={playVideo}>🎵 點播</button>
                   </div>
-                  <SongRoom room={room} name={name} socket={socket} currentSinger={currentSinger} myLevel={level}/>
+                  <SongRoom room={room} name={name} socket={socket} currentSinger={currentSinger} myLevel={level} />
                 </>
               ) : (
                 <>
