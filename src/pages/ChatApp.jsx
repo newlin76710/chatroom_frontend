@@ -75,8 +75,6 @@ export default function ChatApp() {
   const [cooldown, setCooldown] = useState(false);
   const [placeholder, setPlaceholder] = useState("輸入訊息...");
   const messagesEndRef = useRef(null);
-  const messageContainerRef = useRef(null);
-  const shouldAutoScrollRef = useRef(true);
   const socket = globalSocket;
   const [expTips, setExpTips] = useState([]);
   const [levelUpTips, setLevelUpTips] = useState([]);
