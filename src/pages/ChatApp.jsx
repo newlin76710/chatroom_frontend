@@ -103,7 +103,7 @@ export default function ChatApp() {
         window.location.href = "/login";
         return null;
       }
-
+      setToken(storedToken);
       // 先把 sessionStorage 的資料初始化到 state
       const storedName = sessionStorage.getItem("name");
       const storedLevel = parseInt(sessionStorage.getItem("level")) || 1;
@@ -143,8 +143,10 @@ export default function ChatApp() {
         // 如果是正式帳號 token，記錄 token
         if (data.account_type === "account") {
           sessionStorage.setItem("token", token);
+          setToken(token);
         } else {
           sessionStorage.setItem("guestToken", token);
+          setToken(token);
         }
       } catch (err) {
         console.error(err);
