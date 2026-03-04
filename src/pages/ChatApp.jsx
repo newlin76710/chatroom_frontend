@@ -770,6 +770,7 @@ export default function ChatApp() {
           userListCollapsed={userListCollapsed}
           setUserListCollapsed={setUserListCollapsed}
           kickUser={(targetName) => socket.emit("kickUser", { room, targetName })}
+          muteUser={(targetName) => socket.emit("muteUser", { room, targetName })}
           myLevel={level}
           myName={name}
           filteredUsers={filteredUsers}

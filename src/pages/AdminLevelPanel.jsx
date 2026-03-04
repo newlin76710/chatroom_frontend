@@ -228,13 +228,13 @@ export default function AdminLevelPanel({ token, myLevel, minLevel }) {
                                                 >
                                                     修改
                                                 </button>
-                                                <button
+                                                {/* <button
                                                     className="admin-btn"
                                                     style={{ background: "#c62828", color: "#fff" }}
                                                     onClick={() => handleDeleteUser(u.username)}
                                                 >
                                                     刪除
-                                                </button>
+                                                </button> */}
                                             </td>
                                         </tr>
                                     )) : (

@@ -1,6 +1,7 @@
 // UserList.jsx
 import React from "react";
 import { aiAvatars } from "./aiConfig";
+import "./UserList.css";
 
 export default function UserList({
   userList = [],
@@ -10,6 +11,7 @@ export default function UserList({
   userListCollapsed,
   setUserListCollapsed,
   kickUser,
+  muteUser,
   myLevel,
   myName,
   filteredUsers = [],
@@ -19,7 +21,11 @@ export default function UserList({
   const formatLv = (lv) => String(lv).padStart(2, "0");
   const AML = import.meta.env.VITE_ADMIN_MIN_LEVEL || 91;
   const OPENAI = import.meta.env.VITE_OPENAI === "true";
+  const [openMenu, setOpenMenu] = React.useState(null);
 
+  const toggleAdminMenu = (name) => {
+    setOpenMenu(openMenu === name ? null : name);
+  };
   // 依照 OPENAI 過濾 AI
   const visibleUsers = userList.filter(u => OPENAI || u.type !== "AI");
 
@@ -84,17 +90,45 @@ export default function UserList({
               {u.type === "guest" ? 1 : u.level} {u.type === "AI" && "(AI)"}
 
               {canKick && (
-                <button
-                  className="kick-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const ok = window.confirm(`確定要踢出「${u.name}」嗎？`);
-                    if (!ok) return;
-                    kickUser(u.name);
-                  }}
-                >
-                  踢出
-                </button>
+                <div className="ul-admin-wrap">
+                  <button
+                    className="ul-admin-trigger"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleAdminMenu(u.name);
+                    }}
+                  >
+                    管理
+                  </button>
+
+                  {openMenu === u.name && (
+                    <div className="ul-admin-panel">
+                      <button
+                        className="ul-admin-kick"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (window.confirm(`確定踢出 ${u.name}?`)) {
+                            kickUser(u.name);
+                          }
+                        }}
+                      >
+                        👢 踢出
+                      </button>
+
+                      <button
+                        className="ul-admin-mute"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (window.confirm(`禁言 ${u.name} 30秒?`)) {
+                            muteUser(u.name);
+                          }
+                        }}
+                      >
+                        🔇 禁言30秒
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
 
               {/* 過濾按鈕，不管 OPENAI */}

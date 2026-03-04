@@ -1,0 +1,68 @@
+/* 管理外層 */
+.ul-admin-wrap {
+  position: relative;
+  display: inline-block;
+  margin-left: 6px;
+}
+
+/* 🔴 主按鈕（紅色） */
+.ul-admin-trigger {
+  background: linear-gradient(135deg, #ff4d4f, #d9363e);
+  color: white;
+  border: none;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.ul-admin-trigger:hover {
+  background: linear-gradient(135deg, #ff7875, #cf1322);
+}
+
+/* 下拉選單 */
+.ul-admin-panel {
+  position: absolute;
+  right: 0;
+  top: 26px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.15);
+  display: flex;
+  flex-direction: column;
+  min-width: 110px;
+  z-index: 9999;
+  padding: 6px;
+}
+
+/* 共用樣式 */
+.ul-admin-panel button {
+  border: none;
+  border-radius: 6px;
+  padding: 6px 8px;
+  margin: 3px 0;
+  font-size: 13px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+/* 👢 踢出（偏橘紅） */
+.ul-admin-kick {
+  background: #fff2e8;
+  color: #d4380d;
+}
+
+.ul-admin-kick:hover {
+  background: #ffd8bf;
+}
+
+/* 🔇 禁言（偏紫紅） */
+.ul-admin-mute {
+  background: #f9f0ff;
+  color: #722ed1;
+}
+
+.ul-admin-mute:hover {
+  background: #efdbff;
+}
