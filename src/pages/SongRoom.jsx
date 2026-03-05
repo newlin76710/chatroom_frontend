@@ -36,9 +36,17 @@ export default function SongRoom({ room, name, socket, currentSinger, myLevel })
 
   const startSing = async (jwtToken) => {
     try {
-      const lk = new Room();
+      const lk = new Room({
+        adaptiveStream: true,
+        dynacast: true,
+        reconnectPolicy: {
+          maxRetries: 999,
+        }
+      });
       roomRef.current = lk;
-      await lk.connect(import.meta.env.VITE_LIVEKIT_URL, jwtToken);
+      await lk.connect(import.meta.env.VITE_LIVEKIT_URL, jwtToken, {
+        autoSubscribe: true,
+      });
 
       const audioCtx = new AudioContext();
       audioCtxRef.current = audioCtx;
@@ -50,13 +58,15 @@ export default function SongRoom({ room, name, socket, currentSinger, myLevel })
       micSource.connect(dest);
       micSourceRef.current = micSource;
       micStreamRef.current = micStream;
-
       const micTrack = new LocalAudioTrack(dest.stream.getAudioTracks()[0]);
       micTrackRef.current = micTrack;
-      await lk.localParticipant.publishTrack(micTrack);
+      await lk.localParticipant.publishTrack(micTrack, {
+        audioBitrate: 32000
+      });
 
       setLkRoom(lk);
       setSinging(true);
+
     } catch (err) { console.error(err); }
   };
 
