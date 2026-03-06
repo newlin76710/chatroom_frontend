@@ -104,7 +104,7 @@ export default function Login() {
   };
 
   const registerAccount = async () => {
-    if (!username || !password || !confirmPassword || !phone || !email)
+    if (!username || !password || !confirmPassword)
       return alert("請填寫完整資料");
     if (password !== confirmPassword) return alert("兩次密碼輸入不一致");
     try {
@@ -123,7 +123,7 @@ export default function Login() {
   };
 
   const updateProfile = async () => {
-    if (!username || !phone || !email) return alert("暱稱、手機、Email 為必填");
+    if (!username) return alert("暱稱為必填");
     if (password && password !== confirmPassword) return alert("兩次密碼輸入不一致");
     try {
       const token = sessionStorage.getItem("token");
