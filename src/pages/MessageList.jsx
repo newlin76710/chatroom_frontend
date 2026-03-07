@@ -88,6 +88,7 @@ export default function MessageList({
 
           const isSelf = userName === name;
           const isSystem = userName === "系統";
+          const isTransaction = m.type === "transaction";
 
           const isRelatedToMe =
             isSelf ||
@@ -95,7 +96,8 @@ export default function MessageList({
               (m.user?.name === name || m.target === name)) ||
             (m.mode === "publicTarget" &&
               (m.user?.name === name || m.target === name)) ||
-            (isSystem && messageText?.includes(name));
+            (isSystem && messageText?.includes(name)) ||
+            (isTransaction && (userName === name || targetName === name));
 
           // 系統進入聊天室匹配
           const enteringUserMatch = isSystem
@@ -107,6 +109,7 @@ export default function MessageList({
           let color = "#eee";
           if (m.color) color = m.color;
           else if (isSystem && enteringUser) color = "#ff9900";
+          else if (isTransaction) color = "#ff9900";
           else if (isSystem) color = "#BBECE2"; // 其他系統訊息
           else if (isSelf) color = "#fff";
 
@@ -124,7 +127,7 @@ export default function MessageList({
                 marginBottom: "6px",
               }}
             >
-              {!isSelf && !isSystem && (
+              {!isSelf && !isSystem && !isTransaction &&(
                 <img
                   src={
                     m.user?.avatar && m.user?.avatar !== ""
@@ -161,7 +164,37 @@ export default function MessageList({
                   </span>
                 )}
 
-                {enteringUser ? (
+                {isTransaction ? (
+                  <>
+                    <span>🎁 </span>
+
+                    <span
+                      style={{
+                        fontWeight: "bold",
+                        cursor: "pointer",
+                        color: getUserColor(userName),
+                      }}
+                      onClick={() => handleSelectUser(userName)}
+                    >
+                      {userName}
+                    </span>
+
+                    <span> 贈送 </span>
+
+                    <span
+                      style={{
+                        fontWeight: "bold",
+                        cursor: "pointer",
+                        color: getUserColor(targetName),
+                      }}
+                      onClick={() => handleSelectUser(targetName)}
+                    >
+                      {targetName}
+                    </span>
+
+                    <span> {messageText}</span>
+                  </>
+                ) : enteringUser ? (
                   <>
                     <span>系統：</span>
                     <span

@@ -4,7 +4,7 @@ import { aiAvatars } from "./aiConfig";
 
 const BACKEND = import.meta.env.VITE_BACKEND_URL || "http://localhost:10000";
 const CN = import.meta.env.VITE_CHATROOM_NAME || "聽風的歌";
-
+const NF = import.meta.env.VITE_NEW_FUNCTION === "true";
 const inputStyle = {
   width: "100%",
   padding: "10px 12px",
@@ -97,6 +97,11 @@ export default function Login() {
       setUsername(data.name);
       setGender(data.gender);
       setAvatar(data.avatar || "");
+
+      // ⭐ 首次登入獲得 1 顆金蘋果
+      if ( NF && data.reward_apple > 0) {
+        alert(`🎉 本日首次登入獲得 ${data.reward_apple} 顆金蘋果！`);
+      }
       navigate("/chat");
     } catch (e) {
       alert("登入失敗：" + e.message);

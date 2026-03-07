@@ -4,6 +4,7 @@ import "./AdminLevelPanel.css";
 
 const BACKEND = import.meta.env.VITE_BACKEND_URL || "http://localhost:10000";
 const PAGE_SIZE = 20;
+const MAX_GOLD_APPLES = parseInt(import.meta.env.MAX_GOLD_APPLES || "9999", 10);
 
 export default function AdminLevelPanel({ token, myLevel, minLevel }) {
     const [open, setOpen] = useState(false);
@@ -41,6 +42,7 @@ export default function AdminLevelPanel({ token, myLevel, minLevel }) {
             setUsers((data.users || []).map(u => ({
                 ...u,
                 editLevel: u.level,
+                editGold: u.gold_apples || 0,
             })));
             setPage(pageNum);
             setTotalCount(data.total || 0);
@@ -73,7 +75,7 @@ export default function AdminLevelPanel({ token, myLevel, minLevel }) {
                 return;
             }
 
-            alert("更新成功");
+            alert("等級更新成功");
             setUsers(prev =>
                 prev.map(u =>
                     u.username === username
@@ -87,42 +89,48 @@ export default function AdminLevelPanel({ token, myLevel, minLevel }) {
         }
     };
 
-    /* ================= 刪除使用者 ================= */
-    const handleDeleteUser = async (username) => {
-        if (!window.confirm(`⚠️ 確定要永久刪除使用者「${username}」嗎？\n此動作無法復原！`))
-            return;
+    /* ================= 修改金蘋果 ================= */
+    const handleGoldChange = async (username, newGold) => {
+        if (!window.confirm(`確定將 ${username} 的金蘋果設為 ${newGold} 顆嗎？`)) return;
 
         try {
-            const res = await fetch(`${BACKEND}/admin/delete-user`, {
+            const res = await fetch(`${BACKEND}/api/set-gold-apples`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify({ username }),
+                body: JSON.stringify({
+                    username,
+                    count: Number(newGold),
+                }),
             });
 
             const data = await res.json();
             if (!res.ok) {
-                alert(data.error || "刪除失敗");
+                alert(data.error || "更新失敗");
                 return;
             }
 
-            alert("使用者已刪除");
-            setUsers(prev => prev.filter(u => u.username !== username));
-            setTotalCount(c => Math.max(0, c - 1));
+            alert("金蘋果更新成功");
+            setUsers(prev =>
+                prev.map(u =>
+                    u.username === username
+                        ? { ...u, gold_apples: Number(newGold), editGold: Number(newGold) }
+                        : u
+                )
+            );
         } catch (err) {
             console.error(err);
-            alert("刪除失敗");
+            alert("更新失敗");
         }
     };
 
     /* ================= 分頁按鈕 ================= */
     const renderPageButtons = () => {
         const buttons = [];
-        const maxButtons = 7; // 中間最多顯示的按鈕數
+        const maxButtons = 7;
         if (totalPages <= maxButtons) {
-            // 總頁數小於等於 maxButtons，全部顯示
             for (let p = 1; p <= totalPages; p++) {
                 buttons.push(
                     <button key={p} className="admin-btn" disabled={p === page} onClick={() => loadUsers(p)}>
@@ -131,7 +139,6 @@ export default function AdminLevelPanel({ token, myLevel, minLevel }) {
                 );
             }
         } else {
-            // 超過 maxButtons，前後顯示省略
             buttons.push(
                 <button key={1} className="admin-btn" disabled={page === 1} onClick={() => loadUsers(1)}>1</button>
             );
@@ -162,18 +169,17 @@ export default function AdminLevelPanel({ token, myLevel, minLevel }) {
     return (
         <>
             <button className="admin-btn" onClick={() => { setOpen(true); loadUsers(1); }}>
-                🛡 管理使用者等級
+                🛡 管理使用者等級 & 金蘋果
             </button>
 
             {open && (
                 <div className="admin-overlay" onClick={() => setOpen(false)}>
                     <div className="admin-modal" onClick={e => e.stopPropagation()}>
                         <div className="admin-header">
-                            <h3>使用者等級管理</h3>
+                            <h3>使用者管理</h3>
                             <button onClick={() => setOpen(false)}>✖</button>
                         </div>
 
-                        {/* 搜尋 */}
                         <div style={{ marginBottom: "10px" }}>
                             <input
                                 placeholder="搜尋使用者"
@@ -185,25 +191,21 @@ export default function AdminLevelPanel({ token, myLevel, minLevel }) {
                             </button>
                         </div>
 
-                        {/* 表格 + 滾動容器 */}
                         <div className="admin-table-wrapper">
                             <table className="admin-table">
                                 <thead>
                                     <tr>
                                         <th>帳號</th>
                                         <th>等級</th>
+                                        <th>金蘋果</th>
                                         <th>建立時間</th>
                                         <th>最近登入</th>
-                                        <th>操作</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {users.length > 0 ? users.map(u => (
                                         <tr key={u.id}>
                                             <td>{u.username}</td>
-                                            <td>{u.level}</td>
-                                            <td>{new Date(u.created_at).toLocaleString()}</td>
-                                            <td>{u.last_login_at ? new Date(u.last_login_at).toLocaleString() : "-"}</td>
                                             <td>
                                                 <input
                                                     type="number"
@@ -228,25 +230,43 @@ export default function AdminLevelPanel({ token, myLevel, minLevel }) {
                                                 >
                                                     修改
                                                 </button>
-                                                {/* <button
-                                                    className="admin-btn"
-                                                    style={{ background: "#c62828", color: "#fff" }}
-                                                    onClick={() => handleDeleteUser(u.username)}
-                                                >
-                                                    刪除
-                                                </button> */}
                                             </td>
+                                            <td>
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    max={MAX_GOLD_APPLES}
+                                                    value={u.editGold}
+                                                    style={{ width: "60px", marginRight: "6px" }}
+                                                    onChange={e =>
+                                                        setUsers(prev =>
+                                                            prev.map(x =>
+                                                                x.id === u.id
+                                                                    ? { ...x, editGold: e.target.value }
+                                                                    : x
+                                                            )
+                                                        )
+                                                    }
+                                                />
+                                                <button
+                                                    className="admin-btn"
+                                                    onClick={() => handleGoldChange(u.username, u.editGold)}
+                                                >
+                                                    修改
+                                                </button>
+                                            </td>
+                                            <td>{new Date(u.created_at).toLocaleString()}</td>
+                                            <td>{u.last_login_at ? new Date(u.last_login_at).toLocaleString() : "-"}</td>
                                         </tr>
                                     )) : (
                                         <tr>
-                                            <td colSpan="5" style={{ textAlign: "center" }}>無資料</td>
+                                            <td colSpan="6" style={{ textAlign: "center" }}>無資料</td>
                                         </tr>
                                     )}
                                 </tbody>
                             </table>
                         </div>
 
-                        {/* 分頁 */}
                         <div className="admin-pagination">
                             <button className="admin-btn" disabled={page <= 1} onClick={() => loadUsers(page - 1)}>
                                 上一頁

@@ -321,6 +321,55 @@ body {
   background-color: #ff7875;
 }
 
+/* 金蘋果送禮區塊 */
+.trade-apple {
+  display: flex;
+  align-items: center;
+  gap: 6px; /* 元素間距 */
+  margin-top: 8px;
+  margin-left: 6px;
+}
+
+/* 選擇對象下拉選單 */
+.trade-apple select {
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 0.9rem;
+  background-color: #fff;
+  cursor: pointer;
+}
+
+/* 蘋果數量輸入框 */
+.apple-amount-input {
+  width: 50px;
+  padding: 4px;
+  text-align: center;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+/* 送出按鈕 */
+.apple-send-btn {
+  background-color: #FFD700;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+
+.apple-send-btn:hover:not(:disabled) {
+  background-color: #FFC107;
+  transform: translateY(-1px);
+}
+
+.apple-send-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 @keyframes fadeUp {
   0% { opacity: 1; transform: translateY(0); }
   100% { opacity: 0; transform: translateY(-20px); }
