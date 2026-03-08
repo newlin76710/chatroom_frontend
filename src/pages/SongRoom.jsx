@@ -12,7 +12,7 @@ export default function SongRoom({ room, name, socket, currentSinger, myLevel })
   const [queue, setQueue] = useState([]);
   const [panelOpen, setPanelOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-
+  const inQueue = queue.includes(name);
   const roomRef = useRef(null);
   const audioCtxRef = useRef(null);
   const destRef = useRef(null);
@@ -116,8 +116,8 @@ export default function SongRoom({ room, name, socket, currentSinger, myLevel })
   return (
     <div className="songroom-container">
       <button className="songroom-button" disabled={isProcessing}
-        onClick={singing ? stopSing : waiting ? leaveQueue : otherSinger ? joinQueue : grabMic}>
-        {isProcessing ? "⏳ 處理中" : singing ? "🛑 下麥" : waiting ? `🎤 取消排麥` : otherSinger ? "🎶 排麥" : "🎤 上麥"}
+        onClick={singing ? stopSing : inQueue ? leaveQueue : otherSinger ? joinQueue : grabMic}>
+        {isProcessing ? "⏳ 處理中" : singing ? "🛑 下麥" : inQueue ? `🎤 取消排麥` : otherSinger ? "🎶 排麥" : "🎤 上麥"}
       </button>
 
       <div className="queue-panel">

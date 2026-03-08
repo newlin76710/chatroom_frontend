@@ -14,6 +14,7 @@ import QuickPhrasePanel from "./QuickPhrasePanel";
 import AnnouncementPanel from "./AnnouncementPanel";
 import MessageBoard from "./MessageBoard";
 import MyMessageLogPanel from "./MyMessageLogPanel";
+import Leaderboard from "./Leaderboard";
 import { aiAvatars } from "./aiConfig";
 import * as OpenCC from "opencc-js";
 
@@ -616,9 +617,8 @@ export default function ChatApp() {
               💬 留言板
             </button>
             {/* ⭐ 我的發言紀錄（會員限定） */}
-            {isMember && (
-              <MyMessageLogPanel token={token} />
-            )}
+            {isMember && <MyMessageLogPanel token={token} />}
+            {NF && <Leaderboard room={room} token={token} />}
             {offline && (
               <div className="offline-banner">
                 ⚠️ 網路不穩，重新連線中...
@@ -813,7 +813,7 @@ export default function ChatApp() {
                     textAlign: "center",
                   }}
                 >
-                  🍎 當前金蘋果數量：{apples}
+                  <img src="/gifts/gold_apple.gif" alt="金蘋果" style={{ width: 20, height: 20, marginTop: -5 }} /> 當前金蘋果數量：{apples}
                 </div>
 
                 <select
@@ -866,7 +866,7 @@ export default function ChatApp() {
                   className="apple-send-btn"
                   style={{ padding: "6px 12px", borderRadius: "6px" }}
                 >
-                  送金蘋果 🍎
+                  送金蘋果 <img src="/gifts/gold_apple.gif" alt="金蘋果" style={{ width: 20, height: 20, marginTop: -5 }} />
                 </button>
               </div>
             )}

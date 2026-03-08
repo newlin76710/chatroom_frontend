@@ -17,6 +17,11 @@ export const aiAvatars = {
   "江柏翰": "/avatars/b07.gif",
   "小龍女": "/avatars/g08.gif",
   "神鍵墨客": "/avatars/b08.gif",
+  "小龍女1": "/avatars/g09.gif",
+  "神鍵墨客1": "/avatars/b09.gif",
+  "小龍女2": "/avatars/g10.gif",
+  "神鍵墨客2": "/avatars/b10.gif",
+  "非常天蠍": "/avatars/j64.gif",
 };
 
 export const aiProfiles = {

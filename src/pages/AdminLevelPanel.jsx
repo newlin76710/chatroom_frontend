@@ -4,7 +4,7 @@ import "./AdminLevelPanel.css";
 
 const BACKEND = import.meta.env.VITE_BACKEND_URL || "http://localhost:10000";
 const PAGE_SIZE = 20;
-const MAX_GOLD_APPLES = parseInt(import.meta.env.MAX_GOLD_APPLES || "9999", 10);
+const MAX_GOLD_APPLES = parseInt(import.meta.env.MAX_GOLD_APPLES || "999999999", 10);
 
 export default function AdminLevelPanel({ token, myLevel, minLevel }) {
     const [open, setOpen] = useState(false);
