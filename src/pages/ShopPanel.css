@@ -1,0 +1,57 @@
+.shop-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
+
+.shop-panel {
+  width: 340px;
+  background: #fff;
+  border-radius: 10px;
+  padding: 16px;
+  color: #333;
+}
+
+.shop-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.shop-user {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 10px;
+}
+
+.shop-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.shop-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #eee;
+  padding: 8px 0;
+}
+
+.shop-price {
+  margin-right: 10px;
+  color: #ff9800;
+}
+
+.buy-btn {
+  background: #ff9800;
+  color: white;
+  border: none;
+  padding: 4px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+}

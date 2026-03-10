@@ -19,7 +19,7 @@ export default function UserList({
   focusInput
 }) {
   const formatLv = (lv) => String(lv).padStart(2, "0");
-  const AML = import.meta.env.VITE_ADMIN_MIN_LEVEL || 91;
+  const ANL = import.meta.env.VITE_ADMIN_MIN_LEVEL || 91;
   const OPENAI = import.meta.env.VITE_OPENAI === "true";
   const [openMenu, setOpenMenu] = React.useState(null);
 
@@ -59,7 +59,7 @@ export default function UserList({
           const avatarUrl = u.avatar || aiAvatars[u.name];
 
           const canKick =
-            myLevel >= AML &&
+            myLevel >= ANL &&
             u.level < myLevel &&
             u.name !== myName &&
             kickUser;

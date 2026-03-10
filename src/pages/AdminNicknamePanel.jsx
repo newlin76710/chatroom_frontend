@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import "./AdminLoginLogPanel.css";
 
 const BACKEND = import.meta.env.VITE_BACKEND_URL || "http://localhost:10000";
-const AML = import.meta.env.VITE_ADMIN_MIN_LEVEL || 91;
+const ANL = import.meta.env.VITE_ADMIN_MIN_LEVEL || 91;
 const PAGE_SIZE = 20;
 
 export default function AdminNicknamePanel({ myLevel, token, myName }) {
@@ -14,7 +14,7 @@ export default function AdminNicknamePanel({ myLevel, token, myName }) {
   const [nickname, setNickname] = useState("");
   const [reason, setReason] = useState("");
 
-  if (myLevel < AML) return null;
+  if (myLevel < ANL) return null;
 
   const headers = {
     "Content-Type": "application/json",

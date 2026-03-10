@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Room, LocalAudioTrack } from "livekit-client";
 import "./SongRoom.css";
 
-const AML = import.meta.env.VITE_ADMIN_MIN_LEVEL || 91;
+const ANL = import.meta.env.VITE_ADMIN_MIN_LEVEL || 91;
 
 export default function SongRoom({ room, name, socket, currentSinger, myLevel }) {
   const [lkRoom, setLkRoom] = useState(null);
@@ -132,7 +132,7 @@ export default function SongRoom({ room, name, socket, currentSinger, myLevel })
               {currentSinger && (
                 <div className="queue-item">
                   <span>{currentSinger}</span>
-                  {myLevel >= AML && <button className="kick-button" onClick={() => forceStopSinger(currentSinger)}>踢下麥</button>}
+                  {myLevel >= ANL && <button className="kick-button" onClick={() => forceStopSinger(currentSinger)}>踢下麥</button>}
                 </div>
               )}
               {!currentSinger && <div className="queue-item">無 </div>}
@@ -144,7 +144,7 @@ export default function SongRoom({ room, name, socket, currentSinger, myLevel })
                 queue.map((q, i) => (
                   <div key={i} className={`queue-item ${q === name ? "me" : ""}`}>
                     <span>{i + 1}. {q}{q === name && " (我)"}</span>
-                    {myLevel >= AML && <div className="admin-controls">
+                    {myLevel >= ANL && <div className="admin-controls">
                       {i > 0 && (
                         <button
                           onClick={() =>
