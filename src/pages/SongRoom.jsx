@@ -21,30 +21,61 @@ export default function SongRoom({ room, name, socket, currentSinger, myLevel })
   const micStreamRef = useRef(null);
   const panelRef = useRef(null);
   const posRef = useRef({ dragging: false, offsetX: 0, offsetY: 0 });
-  const onMouseDown = (e) => {
+  const startDrag = (clientX, clientY) => {
     posRef.current.dragging = true;
+
     const rect = panelRef.current.getBoundingClientRect();
-    posRef.current.offsetX = e.clientX - rect.left;
-    posRef.current.offsetY = e.clientY - rect.top;
+
+    posRef.current.offsetX = clientX - rect.left;
+    posRef.current.offsetY = clientY - rect.top;
 
     document.addEventListener("mousemove", onMouseMove);
     document.addEventListener("mouseup", onMouseUp);
+
+    document.addEventListener("touchmove", onTouchMove, { passive: false });
+    document.addEventListener("touchend", onTouchEnd);
+  };
+
+  const onMouseDown = (e) => {
+    startDrag(e.clientX, e.clientY);
+  };
+
+  const onTouchStart = (e) => {
+    const touch = e.touches[0];
+    startDrag(touch.clientX, touch.clientY);
+  };
+  const moveDrag = (clientX, clientY) => {
+    if (!posRef.current.dragging) return;
+
+    const x = clientX - posRef.current.offsetX;
+    const y = clientY - posRef.current.offsetY;
+
+    panelRef.current.style.left = `${x}px`;
+    panelRef.current.style.top = `${y}px`;
+    panelRef.current.style.right = "auto";
   };
 
   const onMouseMove = (e) => {
-    if (!posRef.current.dragging) return;
-    const x = e.clientX - posRef.current.offsetX;
-    const y = e.clientY - posRef.current.offsetY;
-    panelRef.current.style.left = `${x}px`;
-    panelRef.current.style.top = `${y}px`;
-    panelRef.current.style.right = "auto"; // 取消 right 固定
+    moveDrag(e.clientX, e.clientY);
   };
 
-  const onMouseUp = () => {
+  const onTouchMove = (e) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    moveDrag(touch.clientX, touch.clientY);
+  };
+  const endDrag = () => {
     posRef.current.dragging = false;
+
     document.removeEventListener("mousemove", onMouseMove);
     document.removeEventListener("mouseup", onMouseUp);
+
+    document.removeEventListener("touchmove", onTouchMove);
+    document.removeEventListener("touchend", onTouchEnd);
   };
+
+  const onMouseUp = () => endDrag();
+  const onTouchEnd = () => endDrag();
   useEffect(() => {
     if (!socket) return;
 
@@ -146,7 +177,7 @@ export default function SongRoom({ room, name, socket, currentSinger, myLevel })
       </button>
 
       <div ref={panelRef} className="queue-panel">
-        <div className="queue-panel-header" onClick={() => setPanelOpen(!panelOpen)} onMouseDown={onMouseDown}>
+        <div className="queue-panel-header" onClick={() => setPanelOpen(!panelOpen)} onMouseDown={onMouseDown} onTouchStart={onTouchStart}>
           <span>🎤 排麥列表</span>
           <span>{panelOpen ? "−" : "+"}</span>
         </div>
