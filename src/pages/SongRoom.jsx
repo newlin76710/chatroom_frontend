@@ -19,7 +19,32 @@ export default function SongRoom({ room, name, socket, currentSinger, myLevel })
   const micTrackRef = useRef(null);
   const micSourceRef = useRef(null);
   const micStreamRef = useRef(null);
+  const panelRef = useRef(null);
+  const posRef = useRef({ dragging: false, offsetX: 0, offsetY: 0 });
+  const onMouseDown = (e) => {
+    posRef.current.dragging = true;
+    const rect = panelRef.current.getBoundingClientRect();
+    posRef.current.offsetX = e.clientX - rect.left;
+    posRef.current.offsetY = e.clientY - rect.top;
 
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+  };
+
+  const onMouseMove = (e) => {
+    if (!posRef.current.dragging) return;
+    const x = e.clientX - posRef.current.offsetX;
+    const y = e.clientY - posRef.current.offsetY;
+    panelRef.current.style.left = `${x}px`;
+    panelRef.current.style.top = `${y}px`;
+    panelRef.current.style.right = "auto"; // 取消 right 固定
+  };
+
+  const onMouseUp = () => {
+    posRef.current.dragging = false;
+    document.removeEventListener("mousemove", onMouseMove);
+    document.removeEventListener("mouseup", onMouseUp);
+  };
   useEffect(() => {
     if (!socket) return;
 
@@ -120,8 +145,8 @@ export default function SongRoom({ room, name, socket, currentSinger, myLevel })
         {isProcessing ? "⏳ 處理中" : singing ? "🛑 下麥" : inQueue ? `🎤 取消排麥` : otherSinger ? "🎶 排麥" : "🎤 上麥"}
       </button>
 
-      <div className="queue-panel">
-        <div className="queue-panel-header" onClick={() => setPanelOpen(!panelOpen)}>
+      <div ref={panelRef} className="queue-panel">
+        <div className="queue-panel-header" onClick={() => setPanelOpen(!panelOpen)} onMouseDown={onMouseDown}>
           <span>🎤 排麥列表</span>
           <span>{panelOpen ? "−" : "+"}</span>
         </div>

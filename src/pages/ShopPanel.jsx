@@ -1,19 +1,23 @@
 import { useState } from "react";
 import "./ShopPanel.css";
 const BACKEND = import.meta.env.VITE_BACKEND_URL || "http://localhost:10000";
-export default function ShopPanel({ token, myName, myLevel, open, onClose }) {
+export default function ShopPanel({ token, myName, myLevel, targetName, open, onClose }) {
   const [buying, setBuying] = useState(null);
 
   if (!open) return null;
 
   const items = [
-    { id: "rose", name: "🌹 玫瑰", price: 15 },
-    { id: "firework", name: "🎆 煙火", price: 50 },
-    { id: "crown", name: "👑 皇冠", price: 200 },
-    { id: "rename", name: "✏️ 升級卡", price: 1000 },
+    { id: "rose", name: "🌹 玫瑰(送禮)", price: 5 },
+    { id: "firework", name: "🎆 放煙火(全場特效)", price: 15 },
+    { id: "ball", name: "🔮 積分球(+1000積分)", price: 30 },
+    { id: "rename", name: "✏️ 升級卡(+1級)", price: 1000 },
   ];
 
   const buyItem = async (item) => {
+    if (item.id === "rose" && !targetName) {
+      alert("請先選擇贈送對象");
+      return;
+    }
     if (buying) return;
 
     try {
@@ -27,6 +31,7 @@ export default function ShopPanel({ token, myName, myLevel, open, onClose }) {
         },
         body: JSON.stringify({
           itemId: item.id,
+          targetName: targetName
         }),
       });
 
@@ -54,7 +59,7 @@ export default function ShopPanel({ token, myName, myLevel, open, onClose }) {
         </div>
 
         <div className="shop-user">
-          玩家：{myName} ｜ 等級：Lv.{myLevel}
+          玩家：{myName} ｜ 等級：Lv.{myLevel} | 🎯 送給：{targetName}
         </div>
 
         <div className="shop-items">

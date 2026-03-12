@@ -34,12 +34,14 @@
   overflow: hidden;
   font-size: 14px;
   z-index: 999;
+  cursor: grab; /* 加這行 */
+  user-select: none;
 }
 
 .queue-panel-header {
   padding: 8px 12px;
   background: #333;
-  cursor: pointer;
+  cursor: grab;
   display: flex;
   justify-content: space-between;
   align-items: center;
