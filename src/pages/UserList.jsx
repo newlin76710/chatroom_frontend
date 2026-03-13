@@ -87,7 +87,7 @@ export default function UserList({
                 {u.name}
               </span>
               &nbsp;
-              {u.type === "guest" ? 1 : u.level} {u.type === "AI" && "(AI)"}
+              {u.type === "guest" ? 1 : u.level} {u.type === "AI" && "AI"}
 
               {canKick && (
                 <div className="ul-admin-wrap">
