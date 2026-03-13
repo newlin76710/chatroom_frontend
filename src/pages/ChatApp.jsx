@@ -819,7 +819,7 @@ export default function ChatApp() {
             {NF && isMember && (
               <div className="trade-apple">
                 <div className="trade-apple-label">
-                  <img src="/gifts/gold_apple.gif" alt="金蘋果" style={{ width: 20, height: 20, marginTop: -5 }} /> 當前金蘋果數量：{apples}
+                  金蘋果樂園 <img src="/gifts/gold_apple.gif" alt="金蘋果" style={{ width: 20, height: 20, marginTop: -5 }} /> 當前金蘋果數量：{apples}
                 </div>
 
                 <select
