@@ -69,7 +69,7 @@ export default function ChatApp() {
   const [gender, setGender] = useState("女");
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
-  const [joined, setJoined] = useState(false);
+  const joinedRef = useRef(false);
   const [offline, setOffline] = useState(false);
   const [target, setTarget] = useState("");
   const [typing, setTyping] = useState("");
@@ -271,7 +271,7 @@ export default function ChatApp() {
     const onReconnect = () => {
       console.log("🟢 socket reconnected");
       setOffline(false);
-
+      if (!joinedRef.current) return;
       // ⭐⭐⭐⭐⭐ 重新 join 房間（極重要）
       socket.emit("joinRoom", {
         room,
@@ -495,13 +495,18 @@ export default function ChatApp() {
 
   // --- 自動 joinRoom 帶 token ---
   useEffect(() => {
-    if (joined || !name) return;
-    const token = sessionStorage.getItem("token") || sessionStorage.getItem("guestToken");
+    if (joinedRef.current || !name) return;
+
+    const token =
+      sessionStorage.getItem("token") ||
+      sessionStorage.getItem("guestToken");
+
     const type = sessionStorage.getItem("type") || "guest";
 
     socket.emit("joinRoom", { room, user: { name, type, token } });
-    setJoined(true);
-  }, [room, socket, joined, name]);
+
+    joinedRef.current = true;
+  }, [name]);
 
   // --- 離開房間 / 斷線 ---
   const leaveRoom = async () => {
@@ -689,7 +694,7 @@ export default function ChatApp() {
           open={showShop}
           onClose={() => setShowShop(false)}
         />
-        {joined && (
+        {name && (
           <>
             <div className="chat-toolbar">
               <span>
@@ -839,8 +844,16 @@ export default function ChatApp() {
                 <input
                   type="number"
                   min={1}
+                  max={3}
                   value={appleAmount}
-                  onChange={(e) => setAppleAmount(Math.max(1, Number(e.target.value)))}
+                  onChange={(e) => {
+                    let val = Number(e.target.value);
+                    if (val > 3) {
+                      alert("最多只能選擇 3 顆金蘋果");
+                      val = 3;
+                    }
+                    setAppleAmount(Math.max(1, val));
+                  }}
                   className="apple-amount-input"
                 />
 

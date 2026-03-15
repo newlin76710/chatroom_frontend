@@ -8,6 +8,7 @@ export default function AnnouncementPanel({ open, onClose, myLevel, token }) {
   const [announcements, setAnnouncements] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [color, setColor] = useState("#ffffff");
   const panelRef = useRef(null);
   const isAdmin = myLevel >= AML;
 
@@ -34,6 +35,7 @@ export default function AnnouncementPanel({ open, onClose, myLevel, token }) {
 
     setLoading(true);
     const current = announcements[currentIndex];
+
     const url = current.id
       ? `${BACKEND}/api/announcement/update`
       : `${BACKEND}/api/announcement/create`;
@@ -49,21 +51,28 @@ export default function AnnouncementPanel({ open, onClose, myLevel, token }) {
           id: current.id,
           title: current.title || "",
           content: current.content || "",
+          color: current.color || "#ffffff",
         }),
       });
 
       if (!res.ok) throw new Error("儲存失敗");
 
-      const saved = await res.json();
+      const result = await res.json();
+      const saved = result.data || result;
+
       setAnnouncements(prev => {
         const newArr = [...prev];
-        if (current.id) newArr[currentIndex] = saved; // 更新
-        else {
-          newArr.push(saved); // 新增
+
+        if (current.id) {
+          newArr[currentIndex] = { ...newArr[currentIndex], ...saved };
+        } else {
+          newArr.push(saved);
           setCurrentIndex(newArr.length - 1);
         }
+
         return newArr;
       });
+
       alert("公告已更新");
     } catch (err) {
       console.error(err);
@@ -76,7 +85,7 @@ export default function AnnouncementPanel({ open, onClose, myLevel, token }) {
   /* ===== 新增公告 ===== */
   const addAnnouncement = () => {
     if (!isAdmin || announcements.length >= 10) return;
-    const newAnn = { title: "新公告", content: "", updated_by: myLevel, updated_at: new Date() };
+    const newAnn = { title: "新公告", content: "", color: "#ffffff", updated_by: myLevel, updated_at: new Date() };
     setAnnouncements([...announcements, newAnn]);
     setCurrentIndex(announcements.length);
   };
@@ -191,6 +200,21 @@ export default function AnnouncementPanel({ open, onClose, myLevel, token }) {
                 fontWeight: "bold",
               }}
             />
+            <div style={{ marginBottom: "6px" }}>
+              字體顏色：
+              <input
+                type="color"
+                value={currentAnnouncement?.color || "#ffffff"}
+                onChange={(e) => {
+                  const newArr = [...announcements];
+                  newArr[currentIndex] = {
+                    ...newArr[currentIndex],
+                    color: e.target.value
+                  };
+                  setAnnouncements(newArr);
+                }}
+              />
+            </div>
             <textarea
               value={currentAnnouncement?.content || ""}
               onChange={(e) => {
@@ -207,8 +231,8 @@ export default function AnnouncementPanel({ open, onClose, myLevel, token }) {
           </>
         ) : (
           <>
-            <strong>{currentAnnouncement?.title}</strong>
-            <pre>{currentAnnouncement?.content}</pre>
+            <strong style={{ color: currentAnnouncement?.color || "#ffffff" }}>{currentAnnouncement?.title}</strong>
+            <pre style={{ whiteSpace: "pre-wrap", color: currentAnnouncement?.color || "#ffffff" }}>{currentAnnouncement?.content}</pre>
           </>
         )}
       </div>
