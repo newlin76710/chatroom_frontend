@@ -21,6 +21,7 @@ export const aiAvatars = {
   "神鍵墨客1": "/avatars/b09.gif",
   "小龍女2": "/avatars/g10.gif",
   "神鍵墨客2": "/avatars/b10.gif",
+  "聽風的歌": "/avatars/j63.gif",
   "非常天蠍": "/avatars/j64.gif",
   "楓鈴": "/avatars/j65.gif",
 };
