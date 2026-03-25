@@ -1,7 +1,7 @@
 // ChatApp.jsx
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { io } from "socket.io-client";
+import socketInstance from "./socket";
 import "./ChatApp.css";
 import MessageList from "./MessageList";
 import VideoPlayer from "./VideoPlayer";
@@ -49,16 +49,6 @@ const toTraditional = (text) => {
 
 const formatLv = (lv) => String(lv).padStart(2, "0");
 
-let globalSocket = null;
-if (!globalSocket) {
-  globalSocket = io(BACKEND, {
-    withCredentials: true,
-    reconnection: true,
-    reconnectionAttempts: Infinity,
-    reconnectionDelay: 1000,
-    reconnectionDelayMax: 5000,
-  });
-}
 
 export default function ChatApp() {
   const navigate = useNavigate();
@@ -83,7 +73,7 @@ export default function ChatApp() {
   const [cooldown, setCooldown] = useState(false);
   const [placeholder, setPlaceholder] = useState("輸入訊息...");
   const messagesEndRef = useRef(null);
-  const socket = globalSocket;
+  const socket = socketInstance;
   const [expTips, setExpTips] = useState([]);
   const [levelUpTips, setLevelUpTips] = useState([]);
   const [chatColor, setChatColor] = useState(

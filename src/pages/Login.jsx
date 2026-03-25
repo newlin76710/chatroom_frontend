@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { aiAvatars } from "./aiConfig";
+import socket from "./socket";
 
 const BACKEND = import.meta.env.VITE_BACKEND_URL || "http://localhost:10000";
+const RN = import.meta.env.VITE_ROOM_NAME || "windsong";
 const CN = import.meta.env.VITE_CHATROOM_NAME || "聽風的歌";
 const NF = import.meta.env.VITE_NEW_FUNCTION === "true";
 const inputStyle = {
@@ -151,9 +153,13 @@ export default function Login() {
       if (!res.ok) throw new Error(data.error || "修改失敗");
 
       alert("資料更新成功！");
+      const oldName = sessionStorage.getItem("name");
       sessionStorage.setItem("name", username);
       sessionStorage.setItem("gender", gender);
       sessionStorage.setItem("avatar", avatar);
+      if (oldName && oldName !== username) {
+        socket.emit("updateMyName", { room: RN, oldName, newName: username });
+      }
     } catch (e) {
       alert("修改失敗：" + e.message);
     }
