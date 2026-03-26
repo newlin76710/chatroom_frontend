@@ -21,7 +21,7 @@ export default function AnnouncementPanel({ open, onClose, myLevel, token }) {
     fetch(`${BACKEND}/api/announcement`)
       .then(res => res.json())
       .then(data => {
-        if (Array.isArray(data)) setAnnouncements(data);
+        if (Array.isArray(data)) setAnnouncements([...data].reverse());
         else if (data) setAnnouncements([data]);
         else setAnnouncements([]);
         setCurrentIndex(0);

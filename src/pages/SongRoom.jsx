@@ -201,8 +201,18 @@ export default function SongRoom({ room, name, socket, currentSinger, myLevel })
                   <div key={i} className={`queue-item ${q === name ? "me" : ""}`}>
                     <span>{i + 1}. {q}{q === name && " (我)"}</span>
                     {myLevel >= ANL && <div className="admin-controls">
+                      {i === 0 && currentSinger && (
+                        <button
+                          className="kick-button"
+                          title="直接推上來替換演唱者"
+                          onClick={() => socket.emit("adminForceNext", { room })}>
+                          ⬆
+                        </button>
+                      )}
+
                       {i > 0 && (
                         <button
+                          className="kick-button"
                           onClick={() =>
                             socket.emit("adminMoveQueue", {
                               room,
@@ -216,6 +226,7 @@ export default function SongRoom({ room, name, socket, currentSinger, myLevel })
 
                       {i < queue.length - 1 && (
                         <button
+                          className="kick-button"
                           onClick={() =>
                             socket.emit("adminMoveQueue", {
                               room,
