@@ -64,6 +64,7 @@ export default function MessageList({
               { regex: /^(.+?) 進入聊天室$/, type: "enter" },
               { regex: /^(.+?) 使用升級卡/, type: "levelUp" },
               { regex: /^(.+?) 使用積分球/, type: "exp" },
+              { regex: /^(.+?) 在線獎勵/, type: "exp" },
               { regex: /^(.+?) 施放煙花/, type: "firework" },
               { regex: /^(.+?) 唱歌時間/, type: "time" }
             ];
