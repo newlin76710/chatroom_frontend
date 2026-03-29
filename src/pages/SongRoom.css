@@ -79,6 +79,18 @@
   margin-left: 6px;
 }
 
+/* ===== 踢人按鈕 ===== */
+.queue-panel .force-button {
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 12px;
+  cursor: pointer;
+  margin-left: 6px;
+}
+
 /* ===== 響應式：手機 ===== */
 @media (max-width: 768px) {
   .queue-panel {

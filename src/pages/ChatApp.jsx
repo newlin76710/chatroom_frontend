@@ -49,7 +49,6 @@ const toTraditional = (text) => {
 
 const formatLv = (lv) => String(lv).padStart(2, "0");
 
-
 export default function ChatApp() {
   const navigate = useNavigate();
   const [room] = useState(RN);
@@ -97,10 +96,10 @@ export default function ChatApp() {
     parseInt(sessionStorage.getItem("apples")) || 0
   );
 
-  const fetchUserData = async (token) => {
+  const fetchUserData = async (t) => {
     try {
       const res = await fetch(`${BACKEND}/auth/me`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${t}` },
       });
       if (!res.ok) throw new Error("無法取得使用者資料");
       const data = await res.json();
@@ -119,11 +118,11 @@ export default function ChatApp() {
 
       // 如果是正式帳號 token，記錄 token
       if (data.account_type === "account") {
-        sessionStorage.setItem("token", token);
-        setToken(token);
+        sessionStorage.setItem("token", t);
+        setToken(t);
       } else {
-        sessionStorage.setItem("guestToken", token);
-        setToken(token);
+        sessionStorage.setItem("guestToken", t);
+        setToken(t);
       }
     } catch (err) {
       console.error(err);
@@ -157,8 +156,8 @@ export default function ChatApp() {
       return storedToken;
     };
 
-    const token = initUser();
-    if (token) fetchUserData(token);
+    const t = initUser();
+    if (t) fetchUserData(t);
   }, []);
 
   useEffect(() => {

@@ -203,7 +203,7 @@ export default function SongRoom({ room, name, socket, currentSinger, myLevel })
                     {myLevel >= ANL && <div className="admin-controls">
                       {i === 0 && currentSinger && (
                         <button
-                          className="kick-button"
+                          className="force-button"
                           title="直接推上來替換演唱者"
                           onClick={() => socket.emit("adminForceNext", { room })}>
                           ⬆
