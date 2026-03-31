@@ -24,14 +24,21 @@ export default function SongRoom({ room, name, socket, currentSinger, myLevel })
   const startDrag = (clientX, clientY) => {
     posRef.current.dragging = true;
 
-    const rect = panelRef.current.getBoundingClientRect();
+    const el = panelRef.current;
+    const rect = el.getBoundingClientRect();
+
+    // 🔥 關鍵：清掉衝突定位
+    el.style.right = "auto";
+    el.style.bottom = "auto";
+
+    el.style.left = `${rect.left}px`;
+    el.style.top = `${rect.top}px`;
 
     posRef.current.offsetX = clientX - rect.left;
     posRef.current.offsetY = clientY - rect.top;
 
     document.addEventListener("mousemove", onMouseMove);
     document.addEventListener("mouseup", onMouseUp);
-
     document.addEventListener("touchmove", onTouchMove, { passive: false });
     document.addEventListener("touchend", onTouchEnd);
   };

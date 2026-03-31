@@ -833,13 +833,13 @@ export default function ChatApp() {
                 <input
                   type="number"
                   min={1}
-                  max={3}
+                  max={3000}
                   value={appleAmount}
                   onChange={(e) => {
                     let val = Number(e.target.value);
-                    if (val > 3) {
-                      alert("最多只能選擇 3 顆金蘋果");
-                      val = 3;
+                    if (val > 3000) {
+                      alert("最多只能選擇 3000 顆金蘋果");
+                      val = 3000;
                     }
                     setAppleAmount(Math.max(1, val));
                   }}
