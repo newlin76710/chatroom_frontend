@@ -41,9 +41,6 @@ export default function MessageList({
   const getUserColor = (userName) => {
     const user = userList.find((u) => u.name === userName);
     if (!user) return "#00aa00";
-    if (user.type === "AI") {
-      return user.gender === "男" ? "#00CED1" : "#F8C8DC"; // 男AI青色，女AI粉紅
-    }
     return user.gender === "男" ? "#A7C7E7" : user.gender === "女" ? "#F8C8DC" : "#00aa00";
   };
 
@@ -100,6 +97,14 @@ export default function MessageList({
           else if (isTransaction || isGift) color = "#ff9900";
           else if (isSystem) color = "#BBECE2";
           else if (isSelf) color = "#fff";
+
+          // AI 私聊文字顏色依性別覆蓋
+          if (m.mode === "private") {
+            const senderUser = userList.find((u) => u.name === userName);
+            if (senderUser?.type === "AI") {
+              color = senderUser.gender === "男" ? "#00CED1" : "#F8C8DC";
+            }
+          }
 
           const bgColor = isRelatedToMe ? "#004477" : "transparent";
           const tag = m.mode === "private" ? "(私聊)" : "";
