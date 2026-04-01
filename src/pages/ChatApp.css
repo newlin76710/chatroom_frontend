@@ -458,14 +458,48 @@ body {
   100% { opacity: 0; }
 }
 
-/* ===== MOBILE RESPONSIVE ===== */
+/* ===== TABLET RESPONSIVE (481px – 768px) ===== */
+@media (min-width: 481px) and (max-width: 768px) {
+  .chat-layout { padding: 10px; gap: 8px; height: auto; min-height: 100vh; }
+  .chat-right { flex: 0 0 220px; }
+  .message-list { max-height: 55vh; }
+  .user-list { height: 300px; }
+  .chat-toolbar { flex-wrap: wrap; gap: 6px; }
+  .video-request input { width: 110px; }
+  .trade-apple { flex-wrap: wrap; gap: 6px; }
+}
+
+/* ===== MOBILE RESPONSIVE (≤480px) ===== */
 @media (max-width: 480px) {
-  .chat-layout { flex-direction: column; padding: 10px; }
-  .chat-right { width: 100%; }
-  .user-list { height: 500px; flex: none; overflow-y: auto;}
+  /* 整體佈局改垂直、可捲動 */
+  .chat-layout { flex-direction: column; padding: 8px; gap: 8px; height: auto; min-height: 100vh; overflow-y: visible; }
+
+  /* 右側（影片 + 使用者列表）放到最下方、全寬 */
+  .chat-right { width: 100%; flex: none; padding: 4px; }
+
+  /* 使用者列表縮小，避免佔太多空間 */
+  .user-list { height: 220px; flex: none; overflow-y: auto; }
+
+  /* 訊息區 */
+  .message-list { max-height: 38vh; min-height: 160px; }
+
+  /* 影片 iframe */
   .video-player-float iframe { height: 90px; }
-  .video-request input { width: 140px; }
-  .chat-input input { flex: 1 1 100%; }
-  .message-list { max-height: 40vh; min-height: 200px; }
+
+  /* 點播輸入框 */
+  .video-request input { width: 120px; }
+
+  /* 輸入區整列換行 */
+  .chat-input { flex-wrap: wrap; }
+  .chat-input input[type="text"] { flex: 1 1 100%; }
+
+  /* 工具列換行、間距縮小 */
+  .chat-toolbar { flex-wrap: wrap; gap: 6px; font-size: 0.85rem; }
+
+  /* 歌單面板全寬 */
   .song-panel-inline { width: 100%; }
+
+  /* 金蘋果區換行、置中 */
+  .trade-apple { flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 6px; }
+  .trade-apple-label { width: 100%; text-align: center; }
 }

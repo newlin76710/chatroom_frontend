@@ -9,6 +9,7 @@ import VideoSafeBoundary from "./VideoSafeBoundary";
 import SongRoom from "./SongRoom";
 import Listener from "./Listener";
 import UserList from "./UserList";
+import AdminSettingsModal from "./AdminSettingsModal";
 import AdminToolPanel from "./AdminToolPanel";
 import QuickPhrasePanel from "./QuickPhrasePanel";
 import AnnouncementPanel from "./AnnouncementPanel";
@@ -95,6 +96,7 @@ export default function ChatApp() {
   const [apples, setApples] = useState(
     parseInt(sessionStorage.getItem("apples")) || 0
   );
+  const [showAppleSetting, setShowAppleSetting] = useState(false);
 
   const fetchUserData = async (t) => {
     try {
@@ -625,292 +627,304 @@ export default function ChatApp() {
   };
 
   return (
-    <div className="chat-layout">
-      {/* 左側聊天區 */}
-      <div className="chat-left">
-        <div className="chat-title-bar">
-          <div className="chat-title">
-            尋夢園{CN}聊天室
-            <button
-              className="announce-btn"
-              title="聊天室公告"
-              onClick={() => setShowAnnouncement(true)}
-            >
-              📢公告
-            </button>
-            <button
-              className="announce-btn"
-              onClick={() => setShowMessageBoard(true)}
-              title="聊天室留言板"
-            >
-              💬 留言板
-            </button>
-            {/* ⭐ 我的發言紀錄（會員限定） */}
-            {isMember && <MyMessageLogPanel token={token} />}
-            {NF && <Leaderboard room={room} token={token} />}
-            {NF && isMember && <button
-              className="announce-btn"
-              title="商城"
-              onClick={() => setShowShop(true)}
-            >
-              <img src="/gifts/gold_apple.gif" alt="金蘋果" style={{ width: 20, height: 20, marginTop: -5 }} /> 商城
-            </button>}
-            {offline && (
-              <div className="offline-banner">
-                ⚠️ 網路不穩，重新連線中...
-              </div>
-            )}
+    <>
+      <div className="chat-layout">
+        {/* 左側聊天區 */}
+        <div className="chat-left">
+          <div className="chat-title-bar">
+            <div className="chat-title">
+              尋夢園{CN}聊天室
+              <button
+                className="announce-btn"
+                title="聊天室公告"
+                onClick={() => setShowAnnouncement(true)}
+              >
+                📢公告
+              </button>
+              <button
+                className="announce-btn"
+                onClick={() => setShowMessageBoard(true)}
+                title="聊天室留言板"
+              >
+                💬 留言板
+              </button>
+              {/* ⭐ 我的發言紀錄（會員限定） */}
+              {isMember && <MyMessageLogPanel token={token} />}
+              {NF && <Leaderboard room={room} token={token} />}
+              {NF && isMember && <button
+                className="announce-btn"
+                title="商城"
+                onClick={() => setShowShop(true)}
+              >
+                <img src="/gifts/gold_apple.gif" alt="金蘋果" style={{ width: 20, height: 20, marginTop: -5 }} /> 商城
+              </button>}
+              {offline && (
+                <div className="offline-banner">
+                  ⚠️ 網路不穩，重新連線中...
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-        <AnnouncementPanel
-          open={showAnnouncement}
-          onClose={() => setShowAnnouncement(false)}
-          myLevel={level}
-          token={token}
-        />
-        <MessageBoard
-          token={token}
-          myName={name}
-          myLevel={level}
-          open={showMessageBoard}
-          onClose={() => setShowMessageBoard(false)}
-        />
-        <ShopPanel
-          token={token}
-          myName={name}
-          myLevel={level}
-          targetName={target}
-          open={showShop}
-          onClose={() => setShowShop(false)}
-        />
-        {name && (
-          <>
-            <div className="chat-toolbar">
-              <span>
-                Hi &nbsp;
-                <span
-                  className="chat-username"
-                  style={{ color: getUserColorByGender(gender) }}
-                >
-                  {name}
-                </span>&nbsp;等級:{formatLv(level)}
-                {sessionStorage.getItem("type") !== "guest" && initializedRef.current && level < ANL - 1 ? ` 積分: ${exp} / ${expForNextLevel(level)}` : ""}
-                <span className="exp-tip-inline">
-                  {expTips.map((tip) => <span key={tip.id} className="exp-tip">{tip.value}</span>)}
+          <AnnouncementPanel
+            open={showAnnouncement}
+            onClose={() => setShowAnnouncement(false)}
+            myLevel={level}
+            token={token}
+          />
+          <MessageBoard
+            token={token}
+            myName={name}
+            myLevel={level}
+            open={showMessageBoard}
+            onClose={() => setShowMessageBoard(false)}
+          />
+          <ShopPanel
+            token={token}
+            myName={name}
+            myLevel={level}
+            targetName={target}
+            open={showShop}
+            onClose={() => setShowShop(false)}
+          />
+          {name && (
+            <>
+              <div className="chat-toolbar">
+                <span>
+                  Hi &nbsp;
+                  <span
+                    className="chat-username"
+                    style={{ color: getUserColorByGender(gender) }}
+                  >
+                    {name}
+                  </span>&nbsp;等級:{formatLv(level)}
+                  {sessionStorage.getItem("type") !== "guest" && initializedRef.current && level < ANL - 1 ? ` 積分: ${exp} / ${expForNextLevel(level)}` : ""}
+                  <span className="exp-tip-inline">
+                    {expTips.map((tip) => <span key={tip.id} className="exp-tip">{tip.value}</span>)}
+                  </span>
+                  <span className="levelup-tip-inline">
+                    {levelUpTips.map((tip) => <span key={tip.id} className="levelup-tip">{tip.value}</span>)}
+                  </span>
                 </span>
-                <span className="levelup-tip-inline">
-                  {levelUpTips.map((tip) => <span key={tip.id} className="levelup-tip">{tip.value}</span>)}
-                </span>
-              </span>
-              <button onClick={leaveRoom}>離開</button>
-              {isMember ? (
-                <>
-                  <div className="video-request">
-                    <input style={{ width: 130 }} value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="貼上YouTube連結" />
-                    <button onClick={playVideo}>🎵 點播</button>
-                  </div>
-                  <SongRoom room={room} name={name} socket={socket} currentSinger={currentSinger} myLevel={level} />
-                </>
-              ) : (
-                <>
-                  <div className="video-request">
+                <button onClick={leaveRoom}>離開</button>
+                {isMember ? (
+                  <>
+                    <div className="video-request">
+                      <input style={{ width: 130 }} value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="貼上YouTube連結" />
+                      <button onClick={playVideo}>🎵 點播</button>
+                    </div>
+                    <SongRoom room={room} name={name} socket={socket} currentSinger={currentSinger} myLevel={level} />
+                  </>
+                ) : (
+                  <>
+                    <div className="video-request">
+                      <button
+                        disabled
+                        title="登入會員即可使用點播功能"
+                        style={{ opacity: 0.5, cursor: "not-allowed" }}
+                      >
+                        🎵 點播（限會員）
+                      </button>
+                    </div>
                     <button
                       disabled
-                      title="登入會員即可使用點播功能"
+                      title="登入會員即可使用唱歌功能"
                       style={{ opacity: 0.5, cursor: "not-allowed" }}
                     >
-                      🎵 點播（限會員）
+                      🎤 唱歌（限會員）
                     </button>
-                  </div>
-                  <button
-                    disabled
-                    title="登入會員即可使用唱歌功能"
-                    style={{ opacity: 0.5, cursor: "not-allowed" }}
-                  >
-                    🎤 唱歌（限會員）
-                  </button>
-                </>
-              )}
-              <Listener room={room} name={name} socket={socket} onSingerChange={(singer) => setCurrentSinger(singer)} />
-            </div>
+                  </>
+                )}
+                <Listener room={room} name={name} socket={socket} onSingerChange={(singer) => setCurrentSinger(singer)} />
+              </div>
 
-            <MessageList
-              messages={messages.filter(msg => !filteredUsers.includes(msg.user?.name))}
-              name={name}
-              level={level}
-              typing={typing}
-              messagesEndRef={messagesEndRef}
-              onSelectTarget={(targetName) => {
-                if (!targetName) return;
-                setTarget(targetName);
-                // 自動切換到私聊模式，如果之前是 public
-                if (chatMode === "public") setChatMode("private");
-                focusInput();
-              }}
-              userList={userList}
-            />
-
-            <div className="chat-input">
-              <button className="clear-btn" onClick={clearAllMessages}>
-                🧹清空畫面
-              </button>
-              {/* 🛡 管理按鈕（小） */}
-              <AdminToolPanel
-                myName={name}
-                myLevel={level}
-                token={token}
+              <MessageList
+                messages={messages.filter(msg => !filteredUsers.includes(msg.user?.name))}
+                name={name}
+                level={level}
+                typing={typing}
+                messagesEndRef={messagesEndRef}
+                onSelectTarget={(targetName) => {
+                  if (!targetName) return;
+                  setTarget(targetName);
+                  // 自動切換到私聊模式，如果之前是 public
+                  if (chatMode === "public") setChatMode("private");
+                  focusInput();
+                }}
                 userList={userList}
               />
-              <label><input type="radio" checked={chatMode === "public"} onChange={() => { setChatMode("public"); setTarget(""); }} /> 公開</label>
-              <label><input type="radio" checked={chatMode === "publicTarget"} onChange={() => setChatMode("publicTarget")} /> 公開對象</label>
-              <label><input type="radio" checked={chatMode === "private"} onChange={() => setChatMode("private")} /> 私聊</label>
-              {chatMode !== "public" && (
-                <select
-                  value={target}
-                  onChange={(e) => {
-                    setTarget(e.target.value);
-                    focusInput?.();
-                  }}
-                >
-                  <option value="">選擇對象</option>
-                  {userList
-                    .filter(u => u.name !== name)
-                    .map((u) => (
-                      <option key={u.id} value={u.name}>
-                        {u.name}
-                      </option>
-                    ))}
-                </select>
-              )}
 
-              <input
-                type="color"
-                value={chatColor}
-                title="選擇聊天顏色"
-                onChange={(e) => {
-                  setChatColor(e.target.value);
-                  sessionStorage.setItem("chatColor", e.target.value);
-                }}
-              />
-              <QuickPhrasePanel
-                token={token}
-                onSelect={(content) => {
-                  setText((prev) => (prev ? prev + " " : "") + content);
-                }}
-              />
-              {NF && (<label
-              >
-                <input
-                  type="checkbox"
-                  checked={convertTC}
-                  onChange={(e) => setConvertTC(e.target.checked)}
-                />
-                簡轉繁
-              </label>)}
-              <input ref={inputRef} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder={placeholder} disabled={cooldown} />
-              <button onClick={send} disabled={cooldown}>發送</button>
-            </div>
-            {NF && isMember && (
-              <div className="trade-apple">
-                <div className="trade-apple-label">
-                  金蘋果樂園 <img src="/gifts/gold_apple.gif" alt="金蘋果" style={{ width: 20, height: 20, marginTop: -5 }} /> 當前金蘋果數量：{apples}
-                </div>
-
-                <select
-                  value={target}
-                  onChange={(e) => setTarget(e.target.value)}
-                >
-                  <option value="">選擇對象</option>
-                  {userList
-                    .filter((u) => u.name !== name && u.type === "account")
-                    .map((u) => (
-                      <option key={u.id} value={u.name}>
-                        {u.name}
-                      </option>
-                    ))}
-                </select>
-
-                <input
-                  type="number"
-                  min={1}
-                  max={3000}
-                  value={appleAmount}
-                  onChange={(e) => {
-                    let val = Number(e.target.value);
-                    if (val > 3000) {
-                      alert("最多只能選擇 3000 顆金蘋果");
-                      val = 3000;
-                    }
-                    setAppleAmount(Math.max(1, val));
-                  }}
-                  className="apple-amount-input"
-                />
-
-                <button
-                  disabled={sendingApple}
-                  onClick={async () => {
-                    if (!target) return alert("請選擇對象");
-                    setSendingApple(true);
-                    try {
-                      const res = await fetch(`${BACKEND}/api/transfer-gold`, {
-                        method: "POST",
-                        headers: {
-                          "Content-Type": "application/json",
-                          Authorization: `Bearer ${token}`,
-                        },
-                        body: JSON.stringify({ targetUsername: target, amount: appleAmount }),
-                      });
-                      const data = await res.json();
-                      if (!res.ok) throw new Error(data.error || "送出失敗");
-                      setAppleAmount(1); // 重置
-                    } catch (err) {
-                      alert(err.message);
-                    } finally {
-                      setSendingApple(false);
-                    }
-                  }}
-                  className="apple-send-btn"
-                >
-                  送金蘋果 <img src="/gifts/gold_apple.gif" alt="金蘋果" style={{ width: 20, height: 20, marginTop: -5 }} />
+              <div className="chat-input">
+                <button className="clear-btn" onClick={clearAllMessages}>
+                  🧹清空畫面
                 </button>
+                {/* 🛡 管理按鈕（小） */}
+                <AdminToolPanel
+                  myName={name}
+                  myLevel={level}
+                  token={token}
+                  userList={userList}
+                />
+                <label><input type="radio" checked={chatMode === "public"} onChange={() => { setChatMode("public"); setTarget(""); }} /> 公開</label>
+                <label><input type="radio" checked={chatMode === "publicTarget"} onChange={() => setChatMode("publicTarget")} /> 公開對象</label>
+                <label><input type="radio" checked={chatMode === "private"} onChange={() => setChatMode("private")} /> 私聊</label>
+                {chatMode !== "public" && (
+                  <select
+                    value={target}
+                    onChange={(e) => {
+                      setTarget(e.target.value);
+                      focusInput?.();
+                    }}
+                  >
+                    <option value="">選擇對象</option>
+                    {userList
+                      .filter(u => u.name !== name)
+                      .map((u) => (
+                        <option key={u.id} value={u.name}>
+                          {u.name}
+                        </option>
+                      ))}
+                  </select>
+                )}
+
+                <input
+                  type="color"
+                  value={chatColor}
+                  title="選擇聊天顏色"
+                  onChange={(e) => {
+                    setChatColor(e.target.value);
+                    sessionStorage.setItem("chatColor", e.target.value);
+                  }}
+                />
+                <QuickPhrasePanel
+                  token={token}
+                  onSelect={(content) => {
+                    setText((prev) => (prev ? prev + " " : "") + content);
+                  }}
+                />
+                {NF && (<label
+                >
+                  <input
+                    type="checkbox"
+                    checked={convertTC}
+                    onChange={(e) => setConvertTC(e.target.checked)}
+                  />
+                  簡轉繁
+                </label>)}
+                <input ref={inputRef} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder={placeholder} disabled={cooldown} />
+                <button onClick={send} disabled={cooldown}>發送</button>
               </div>
-            )}
-          </>
-        )}
-      </div>
+              {NF && isMember && (
+                <div className="trade-apple">
+                  <div className="trade-apple-label" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    {level >= AML && (
+                      <button
+                        className="admin-btn"
+                        onClick={() => setShowAppleSetting(true)}
+                      >
+                        ⚙️ 設定
+                      </button>
+                    )}
+                    金蘋果樂園 <img src="/gifts/gold_apple.gif" alt="金蘋果" style={{ width: 20, height: 20, marginTop: -5 }} /> 當前金蘋果數量：{apples}
+                  </div>
 
-      {/* 右側使用者列表 & 影片 */}
-      <div className="chat-right">
-        <div className="youtube-container">
-          <VideoSafeBoundary>
-            <VideoPlayer
-              video={currentVideo}
-              extractVideoID={extractVideoID}
-              onClose={() => {
-                const id = extractVideoID(currentVideo?.url);
-                setClosedVideoId(id);
-                setCurrentVideo(null);
-              }}
-            />
-          </VideoSafeBoundary>
+                  <select
+                    value={target}
+                    onChange={(e) => setTarget(e.target.value)}
+                  >
+                    <option value="">選擇對象</option>
+                    {userList
+                      .filter((u) => u.name !== name && u.type === "account")
+                      .map((u) => (
+                        <option key={u.id} value={u.name}>
+                          {u.name}
+                        </option>
+                      ))}
+                  </select>
+
+                  <input
+                    type="number"
+                    min={1}
+                    value={appleAmount}
+                    onChange={(e) => {
+                      let val = Number(e.target.value);
+                      setAppleAmount(Math.max(1, val));
+                    }}
+                    className="apple-amount-input"
+                  />
+
+                  <button
+                    disabled={sendingApple}
+                    onClick={async () => {
+                      if (!target) return alert("請選擇對象");
+                      setSendingApple(true);
+                      try {
+                        const res = await fetch(`${BACKEND}/api/transfer-gold`, {
+                          method: "POST",
+                          headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${token}`,
+                          },
+                          body: JSON.stringify({ targetUsername: target, amount: appleAmount }),
+                        });
+                        const data = await res.json();
+                        if (!res.ok || data.success === false) {
+                          throw new Error(data.reason || data.error || "送出失敗");
+                        }
+                        setAppleAmount(1); // 重置
+                      } catch (err) {
+                        alert(err.message);
+                      } finally {
+                        setSendingApple(false);
+                      }
+                    }}
+                    className="apple-send-btn"
+                  >
+                    送金蘋果 <img src="/gifts/gold_apple.gif" alt="金蘋果" style={{ width: 20, height: 20, marginTop: -5 }} />
+                  </button>
+                </div>
+              )}
+            </>
+          )}
         </div>
-        <UserList
-          userList={userList}
-          target={target}
-          setTarget={setTarget}
-          setChatMode={setChatMode}
-          userListCollapsed={userListCollapsed}
-          setUserListCollapsed={setUserListCollapsed}
-          kickUser={(targetName) => socket.emit("kickUser", { room, targetName })}
-          muteUser={(targetName) => socket.emit("muteUser", { room, targetName })}
-          myLevel={level}
-          myName={name}
-          filteredUsers={filteredUsers}
-          setFilteredUsers={setFilteredUsers}
-          focusInput={focusInput}
-        />
-      </div>
 
-    </div>
+        {/* 右側使用者列表 & 影片 */}
+        <div className="chat-right">
+          <div className="youtube-container">
+            <VideoSafeBoundary>
+              <VideoPlayer
+                video={currentVideo}
+                extractVideoID={extractVideoID}
+                onClose={() => {
+                  const id = extractVideoID(currentVideo?.url);
+                  setClosedVideoId(id);
+                  setCurrentVideo(null);
+                }}
+              />
+            </VideoSafeBoundary>
+          </div>
+          <UserList
+            userList={userList}
+            target={target}
+            setTarget={setTarget}
+            setChatMode={setChatMode}
+            userListCollapsed={userListCollapsed}
+            setUserListCollapsed={setUserListCollapsed}
+            kickUser={(targetName) => socket.emit("kickUser", { room, targetName })}
+            muteUser={(targetName) => socket.emit("muteUser", { room, targetName })}
+            myLevel={level}
+            myName={name}
+            filteredUsers={filteredUsers}
+            setFilteredUsers={setFilteredUsers}
+            focusInput={focusInput}
+          />
+        </div>
+      </div>
+      <AdminSettingsModal
+        open={showAppleSetting}
+        onClose={() => setShowAppleSetting(false)}
+        token={token}
+        BACKEND={BACKEND}
+      />
+    </>
   );
 }
