@@ -6,15 +6,19 @@ export default function ShopPanel({ token, myName, myLevel, targetName, open, on
 
   if (!open) return null;
 
+  const GIFT_IDS = ["rose", "chocolate", "cake"];
+
   const items = [
-    { id: "rose", name: "🌹 玫瑰(送禮)", price: 5 },
-    { id: "firework", name: "🎆 放煙火(全場特效)", price: 15 },
-    { id: "ball", name: "🔮 積分球(+1000積分)", price: 30 },
-    { id: "rename", name: "✏️ 升級卡(+1級)", price: 1000 },
+    { id: "rose",      name: "🌹 玫瑰(送禮)",   price: 5 },
+    { id: "chocolate", name: "🍫 巧克力(送禮)", price: 5 },
+    { id: "cake",      name: "🎂 蛋糕(送禮)",   price: 5 },
+    { id: "firework",  name: "🎆 放煙火(全場特效)", price: 15 },
+    { id: "ball",      name: "🔮 積分球(+1000積分)", price: 30 },
+    { id: "rename",    name: "✏️ 升級卡(+1級)",  price: 1000 },
   ];
 
   const buyItem = async (item) => {
-    if (item.id === "rose" && !targetName) {
+    if (GIFT_IDS.includes(item.id) && !targetName) {
       alert("請先選擇贈送對象");
       return;
     }
