@@ -20,6 +20,39 @@ export default function MessageList({
 }) {
   const AML = import.meta.env.VITE_ADMIN_MAX_LEVEL || 99;
   const containerRef = useRef(null);
+  const isNearBottomRef = useRef(true);
+
+  // 追蹤使用者是否在底部附近
+  useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const handleScroll = () => {
+      isNearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+    };
+    el.addEventListener("scroll", handleScroll, { passive: true });
+    return () => el.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // 手機鍵盤彈出/收起時（visualViewport resize），若原本在底部就補捲
+  useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const handleResize = () => {
+      if (isNearBottomRef.current) {
+        requestAnimationFrame(() => {
+          el.scrollTop = el.scrollHeight;
+        });
+      }
+    };
+    const vv = window.visualViewport;
+    if (vv) {
+      vv.addEventListener("resize", handleResize);
+      return () => vv.removeEventListener("resize", handleResize);
+    } else {
+      window.addEventListener("resize", handleResize);
+      return () => window.removeEventListener("resize", handleResize);
+    }
+  }, []);
 
   useLayoutEffect(() => {
     const el = containerRef.current;
