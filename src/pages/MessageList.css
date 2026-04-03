@@ -24,6 +24,38 @@
   white-space:pre-line;
 }
 
+/* ── 樂透金蘋果橫幅 ────────────────────────────────── */
+@keyframes surprisePulse {
+  0%, 100% { box-shadow: 0 0 8px #FFD700, 0 0 16px #FF8C00; }
+  50%       { box-shadow: 0 0 16px #FFD700, 0 0 32px #FF8C00; }
+}
+
+.surprise-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px;
+  background: linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,140,0,0.15));
+  border: 2px solid #FFD700;
+  border-radius: 10px;
+  animation: surprisePulse 2s ease-in-out 3;
+  max-width: 90%;
+}
+
+.surprise-text {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #FFD700;
+  text-shadow: 0 0 6px rgba(255,215,0,0.6);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.surprise-icon {
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+
 @keyframes giftPop{
   0%{
     transform:scale(0.4);

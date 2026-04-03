@@ -90,6 +90,7 @@ export default function MessageList({
           const isSystem = userName === "系統";
           const isTransaction = m.type === "transaction";
           const isGift = m.type === "gift";
+          const isSurprise = m.type === "surprise";
           // 處理系統訊息：進入 & 升級卡
           let relatedUser = null;
           if (isSystem && messageText) {
@@ -141,6 +142,18 @@ export default function MessageList({
 
           const bgColor = isRelatedToMe ? "#004477" : "transparent";
           const tag = m.mode === "private" ? "(私聊)" : "";
+
+          if (isSurprise) {
+            return (
+              <div key={i} className="message-row surprise-message" style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}>
+                <div className="surprise-banner">
+                  <span className="surprise-icon">🎊</span>
+                  <span className="surprise-text">{messageText}</span>
+                  <span className="surprise-icon">🎊</span>
+                </div>
+              </div>
+            );
+          }
 
           return (
             <div key={i} className="message-row" style={{ display: "flex", justifyContent: isSelf ? "flex-end" : "flex-start", marginBottom: 6 }}>

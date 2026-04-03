@@ -55,3 +55,34 @@
   border-radius: 5px;
   cursor: pointer;
 }
+
+.cake-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 0 6px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.cake-variant-btn {
+  background: #fff8f0;
+  border: 1px solid #ff9800;
+  color: #333;
+  padding: 8px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  text-align: center;
+  transition: background 0.15s;
+  min-width: 72px;
+}
+
+.cake-variant-btn:hover:not(:disabled) {
+  background: #ff9800;
+  color: white;
+}
+
+.cake-variant-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

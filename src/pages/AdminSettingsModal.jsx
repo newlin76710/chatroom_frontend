@@ -6,6 +6,7 @@ export default function AdminSettingsModal({ open, onClose, token, BACKEND }) {
     singing_reward: 2,
     per_transfer_limit: 0,
     daily_transfer_limit: 0,
+    surprise_reward: 10,
   });
 
   const [loading, setLoading] = useState(true);
@@ -133,6 +134,17 @@ export default function AdminSettingsModal({ open, onClose, token, BACKEND }) {
                 value={settings.daily_transfer_limit}
                 onChange={(e) =>
                   handleChange("daily_transfer_limit", e.target.value)
+                }
+              />
+            </div>
+
+            <div>
+              <label>每日樂透金蘋果數量</label>
+              <input
+                type="number"
+                value={settings.surprise_reward}
+                onChange={(e) =>
+                  handleChange("surprise_reward", e.target.value)
                 }
               />
             </div>

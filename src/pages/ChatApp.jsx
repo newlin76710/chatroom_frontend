@@ -21,6 +21,7 @@ import SongRoom from "./SongRoom";
 import Listener from "./Listener";
 import UserList from "./UserList";
 import AdminSettingsModal from "./AdminSettingsModal";
+import SurpriseHistoryPanel from "./SurpriseHistoryPanel";
 import AdminToolPanel from "./AdminToolPanel";
 import QuickPhrasePanel from "./QuickPhrasePanel";
 import AnnouncementPanel from "./AnnouncementPanel";
@@ -94,6 +95,7 @@ export default function ChatApp() {
   const {
     messages,
     addMessage, addSystemMessage, addTransactionMessage, addGiftMessage,
+    addSurpriseMessage,
     clearMessages,
   } = useMessages();
 
@@ -265,6 +267,19 @@ export default function ChatApp() {
     };
   }, [socket, addMessage, addSystemMessage, addTransactionMessage, addGiftMessage]);
   // addMessage 等函式全部是穩定的（useCallback deps=[]），所以等同只依賴 socket
+
+  // ─── 每日金蘋果樂透 ──────────────────────────────────────────────────────
+  useEffect(() => {
+    const handleSurprise = (data) => {
+      addSurpriseMessage(data);
+      // 若自己是得獎者，立即更新金蘋果數量
+      if (data.winner && data.winner === nameRef.current) {
+        setApples((prev) => prev + data.amount);
+      }
+    };
+    socket.on("goldenAppleSurprise", handleSurprise);
+    return () => socket.off("goldenAppleSurprise", handleSurprise);
+  }, [socket, addSurpriseMessage]);
 
   // ─── joinFailed / firework ────────────────────────────────────────────────
   useEffect(() => {
@@ -590,6 +605,7 @@ export default function ChatApp() {
                     {level >= AML && (
                       <button className="admin-btn" onClick={() => setShowAppleSetting(true)}>⚙️ 設定</button>
                     )}
+                    <SurpriseHistoryPanel token={token} />
                     金蘋果樂園{" "}
                     <img src="/gifts/gold_apple.gif" alt="金蘋果" style={{ width: 20, height: 20, marginTop: -5 }} />{" "}
                     當前金蘋果數量：{apples}
