@@ -60,10 +60,12 @@ export default function MessageList({
 
     const lastMsg = messages[messages.length - 1];
     const isSelf = lastMsg?.user?.name === name;
-    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
 
     requestAnimationFrame(() => {
-      if (isSelf || distanceFromBottom < 120) el.scrollTop = el.scrollHeight;
+      // 自己發的訊息一律捲到底；其他人的訊息只有在「已在底部」時才跟著捲
+      if (isSelf || isNearBottomRef.current) {
+        el.scrollTop = el.scrollHeight;
+      }
     });
   }, [messages, name]);
 
