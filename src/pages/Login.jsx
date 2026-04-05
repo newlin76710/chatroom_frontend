@@ -38,8 +38,11 @@ export default function Login() {
   const [gender, setGender] = useState("女");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [birthday, setBirthday] = useState("");
   const [avatar, setAvatar] = useState("/avatars/g01.gif");
   const [editLoggedIn, setEditLoggedIn] = useState(false);
+  const [phoneConfirm, setPhoneConfirm] = useState(false);
+  const [emailConfirm, setEmailConfirm] = useState(false);
 
   useEffect(() => {
     const type = sessionStorage.getItem("type");
@@ -123,7 +126,7 @@ export default function Login() {
       const res = await fetch(`${BACKEND}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password, gender, phone, email, avatar }),
+        body: JSON.stringify({ username, password, gender, phone, email, avatar, birthday: birthday || undefined }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "註冊失敗");
@@ -147,10 +150,14 @@ export default function Login() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ username, password, gender, avatar, phone, email }),
+        body: JSON.stringify({ username, password, gender, avatar, phone, email, birthday: birthday || undefined }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "修改失敗");
+
+      // 更新驗證狀態（手機/email 有變動時後端會重置為 false）
+      setPhoneConfirm(data.user?.phone_confirm ?? false);
+      setEmailConfirm(data.user?.email_confirm ?? false);
 
       alert("資料更新成功！");
       const oldName = sessionStorage.getItem("name");
@@ -245,6 +252,9 @@ export default function Login() {
               setUsername(data.name);
               setGender(data.gender);
               setAvatar(data.avatar || "");
+              setBirthday(data.birthday ? data.birthday.slice(0, 10) : "");
+              setPhoneConfirm(data.phone_confirm ?? false);
+              setEmailConfirm(data.email_confirm ?? false);
               setEditLoggedIn(true);
             } catch (e) {
               alert("登入失敗：" + e.message);
@@ -313,6 +323,19 @@ export default function Login() {
             </>
           )}
 
+          {/* 生日欄位 */}
+          {(mode === "register" || (mode === "edit" && editLoggedIn)) && (
+            <div>
+              <div style={{ color: "#aaa", fontSize: 13, marginBottom: 4 }}>生日 YYYY-MM-DD（選填）</div>
+              <input
+                style={inputStyle}
+                type="date"
+                value={birthday}
+                onChange={(e) => setBirthday(e.target.value)}
+              />
+            </div>
+          )}
+
           {/* 頭像選擇 */}
           {(mode === "register" || (mode === "edit" && editLoggedIn)) && (
             <div style={{ margin: "10px 0" }}>
@@ -368,7 +391,6 @@ export default function Login() {
                 } catch (e) {
                   console.warn("登出失敗，但仍清掉前端狀態", e);
                 } finally {
-                  // 清掉前端登入狀態
                   sessionStorage.clear();
                   setEditLoggedIn(false);
                   setUsername("");
@@ -376,8 +398,11 @@ export default function Login() {
                   setConfirmPassword("");
                   setPhone("");
                   setEmail("");
+                  setBirthday("");
                   setGender("女");
                   setAvatar("/avatars/g01.gif");
+                  setPhoneConfirm(false);
+                  setEmailConfirm(false);
                 }
               }}
             >
